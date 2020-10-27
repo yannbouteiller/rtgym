@@ -8,7 +8,7 @@ Its purpose is to clock your Gym environments in a way that is transparent to th
 - [Real-time Gym framework](#real-time-gym-framework)
 - [Tutorial: Implement custom tasks](#tutorial)
 
-## Author:
+## Author
 - Yann Bouteiller
 
 ## Real-time Gym framework
