@@ -491,3 +491,5 @@ while not done:
 cv2.waitKey(0)
 ```
 
+---
+The complete script for this tutorial is provided [here](https://github.com/yannbouteiller/rtgym/blob/main/rtgym/tuto/tuto.py).
