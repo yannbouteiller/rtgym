@@ -1,7 +1,25 @@
 from setuptools import setup
 
 setup(name='rtgym',
+      packages='rtgym',
       version='0.0.1',
-      install_requires=['gym',
-                        'numpy']
+      license='MIT',
+      description='Easily implement custom OpenAI Gym environments for real-time applications',
+      author='Yann Bouteiller',
+      url='https://github.com/yannbouteiller/rtgym',
+      download_url='https://github.com/yannbouteiller/rtgym/archive/v0.0.1.tar.gz',
+      keywords=['gym', 'real', 'time', 'custom', 'environment', 'reinforcement', 'learning'],
+      install_requires=['gym', 'numpy'],
+      classifiers=[
+          'Development Status :: 5 - Production/Stable',
+          'Intended Audience :: Developers',
+          'Intended Audience :: Education',
+          'Intended Audience :: Information Technology',
+          'Intended Audience :: Science/Research',
+          'License :: OSI Approved :: MIT License',
+          'Operating System :: Microsoft :: Windows',
+          'Operating System :: POSIX',
+          'Programming Language :: Python',
+          'Topic :: Scientific/Engineering :: Artificial Intelligence',
+      ],
       )
