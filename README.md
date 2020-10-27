@@ -29,8 +29,8 @@ This environment can be used by simply following the usual Gym pattern, therefor
 
 ```python
 from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
-rtgym_config = DEFAULT_CONFIG_DICT
-rtgym_config['interface'] = MyCustomInterface
+my_config = DEFAULT_CONFIG_DICT
+my_config['interface'] = MyCustomInterface
 
 env = gym.make("rtgym:real-time-gym-v0", my_config)
 
