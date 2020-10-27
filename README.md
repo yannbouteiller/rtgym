@@ -413,8 +413,8 @@ In our situation, observation capture is instantaneous. Only its transmission is
 
 The ```"time_step_timeout_factor"``` entry defines the maximum elasticity of the framework before a time-step times-out.
 When it is ```1.0```, a time-step can be stretched up to twice its length, and the framework will compensate by shrinking the durations of the next time-steps.
-When the elasticity cannot be maintained, the framework breaks it for one time-step and informs the user.
-This is meant to happen after the environment gets 'paused' with ```wait```, and this might happen after calls to reset().
+When the elasticity cannot be maintained, the framework breaks it for one time-step and warns the user.
+This might happen after calls to reset() depending on how you implement the ```reset``` method of the interface.
 However, if this happens repeatedly in other situations, it probably means that your inference time is too long for the time-step you are trying to use.
 
 The ```"ep_max_length"``` entry is the maximum length of an episode.
