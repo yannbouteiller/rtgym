@@ -43,7 +43,7 @@ while True:  # when this loop is broken, the current time-step will timeout
 You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
 This method defines the core meachnism of Real-Time Gym environments:
 
-![Real-Time Gym Framework](figures/rt_gym_env.png "Real-Time Gym Framework")
+![Real-Time Gym Framework](https://raw.githubusercontent.com/yannbouteiller/rtgym/main/figures/rt_gym_env.png "Real-Time Gym Framework")
 
 Time-steps are being elastically constrained to their nominal duration. When this elastic constraint cannot be satisfied, the previous time-step timeouts and the new time-step starts from the current timestamp.
 This happens either because the environment has been 'paused', or because the system is ill-designed:
