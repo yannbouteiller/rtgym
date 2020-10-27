@@ -19,10 +19,10 @@ It is coded in python.
 Its purpose is to elastically constrain the times at which actions are sent and observations are retrieved, in a way that is transparent to the user.
 It provides a minimal abstract python interface that the user simply customizes for their own application.
 
-Custom interfaces must inherit the [RealTimeGymInterface](https://github.com/yannbouteiller/rt-gym/blob/75ffe7e5a66e402c00a2629c9cfcbe537381dc76/rtgym/envs/real_time_env.py#L11) class and implement all its abstract methods.
+Custom interfaces must inherit the [RealTimeGymInterface](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L12) class and implement all its abstract methods.
 Non-abstract methods can be overidden if desired.
 
-Then, copy the ```rtgym``` default [configuration dictionary](https://github.com/yannbouteiller/rt-gym/blob/75ffe7e5a66e402c00a2629c9cfcbe537381dc76/rtgym/envs/real_time_env.py#L95) in your code and replace the ``` 'interface' ``` entry with the class of your custom interface. You probably also want to modify other entries in this dictionary depending on your application.
+Then, copy the ```rtgym``` default [configuration dictionary](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L96) in your code and replace the ``` 'interface' ``` entry with the class of your custom interface. You probably also want to modify other entries in this dictionary depending on your application.
 
 Once the custom interface is implemented, ```rtgym``` uses it to instantiate a fully-fledged Gym environment that automatically deals with time constraints.
 This environment can be used by simply following the usual Gym pattern, therefore compatible with many implemented Reinforcement Learning (RL) algorithms:
@@ -40,7 +40,7 @@ while True:  # when this loop is broken, the current time-step will timeout
 	obs = env.step(act)  # the step function transparently adapts to this duration
 ```
 
-You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rt-gym/blob/75ffe7e5a66e402c00a2629c9cfcbe537381dc76/rtgym/envs/real_time_env.py#L186) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
+You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
 This method defines the core meachnism of Real-Time Gym environments:
 
 ![Real-Time Gym Framework](figures/rt_gym_env.png "Real-Time Gym Framework")
@@ -81,7 +81,7 @@ You can import the RealTimeGymInterface class as follows:
 from rtgym import RealTimeGymInterface
 ```
 
-The [RealTimeGymInterface](https://github.com/yannbouteiller/rt-gym/blob/75ffe7e5a66e402c00a2629c9cfcbe537381dc76/rtgym/envs/real_time_env.py#L11) is all you need to implement in order to create your custom real-time Gym environment.
+The [RealTimeGymInterface](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L12) is all you need to implement in order to create your custom real-time Gym environment.
 
 This class has 6 abstract methods that you need to implement: ```get_observation_space```, ```get_action_space```, ```get_default_action```, ```reset```, ```get_obs_rew_done``` and ```send_control```.
 It also has a ```wait``` and a ```render``` methods that you may want to override.
