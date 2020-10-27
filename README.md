@@ -7,9 +7,7 @@ Its purpose is to clock your Gym environments in a way that is transparent to th
 ## Quick links
 - [Real-time Gym framework](#real-time-gym-framework)
 - [Tutorial: Implement custom tasks](#tutorial)
-
-## Author
-- Yann Bouteiller
+- [Contribute](#authors)
 
 ## Real-time Gym framework
 Real-Time Gym (```rtgym```) is a simple and efficient real-time threaded framework built on top of [OpenAI Gym](https://github.com/openai/gym#openai-gym).
@@ -493,3 +491,14 @@ cv2.waitKey(0)
 
 ---
 The complete script for this tutorial is provided [here](https://github.com/yannbouteiller/rtgym/blob/main/rtgym/tuto/tuto.py).
+
+---
+
+## Authors
+All contributions to this project are welcome.
+To contribute, please submit a pull request that includes your name in the Contributors list.
+
+### Maintainers
+- Yann Bouteiller
+
+### Contributors
