@@ -1,13 +1,13 @@
 from setuptools import setup
 
 
-with open("description_pypi.md", "r") as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 
 setup(name='rtgym',
       packages=['rtgym', ],
-      version='0.0.1.post3',
+      version='0.0.1.post4',
       license='MIT',
       description='Easily implement custom OpenAI Gym environments for real-time applications',
       long_description=long_description,
