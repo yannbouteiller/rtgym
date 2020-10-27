@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='rtgym',
-      packages='rtgym',
+      packages=['rtgym', ],
       version='0.0.1',
       license='MIT',
       description='Easily implement custom OpenAI Gym environments for real-time applications',
