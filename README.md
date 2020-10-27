@@ -278,7 +278,7 @@ However, this needs to be done repeatedly, otherwise step() will time-out.
 Yet, you may still want to artificially 'pause' the environment occasionally, e.g. because you collected a batch of samples, or because you want to pause the whole experiment.
 This is the role of the ```wait``` method.
 
-By default, its behaviour is to send the default action:
+By default, its behavior is to send the default action:
 ```python
 def wait(self):
     self.send_control(self.get_default_action())
