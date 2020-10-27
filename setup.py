@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 with open("README.md", "r") as fh:
@@ -6,8 +6,8 @@ with open("README.md", "r") as fh:
 
 
 setup(name='rtgym',
-      packages=['rtgym', ],
-      version='0.1',
+      packages=[package for package in find_packages()],
+      version='0.1.post1',
       license='MIT',
       description='Easily implement custom OpenAI Gym environments for real-time applications',
       long_description=long_description,
