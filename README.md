@@ -45,7 +45,7 @@ This method defines the core meachnism of Real-Time Gym environments:
 
 ![Real-Time Gym Framework](https://raw.githubusercontent.com/yannbouteiller/rtgym/main/figures/rt_gym_env.png "Real-Time Gym Framework")
 
-Time-steps are being elastically constrained to their nominal duration. When this elastic constraint cannot be satisfied, the previous time-step timeouts and the new time-step starts from the current timestamp.
+Time-steps are being elastically constrained to their nominal duration. When this elastic constraint cannot be satisfied, the previous time-step times out and the new time-step starts from the current timestamp.
 This happens either because the environment has been 'paused', or because the system is ill-designed:
 - The inference duration of the model, i.e. the elapsed duration between two calls of the step() function, may be too long for the time-step duration that the user is trying to use.
 - The procedure that retrieves observations may take too much time or may be called too late (the latter can be tweaked in the configuration dictionary). Remember that, if observation capture is too long, it must not be part of the get_obs_rew_done() method of your interface. Instead, this method must simply retrieve the latest available observation from another process, and the action buffer must be long enough to handle the observation capture duration. This is described in the Appendix of [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966).
@@ -60,7 +60,7 @@ Implementing a Gym environment on a real system is not straightforward when time
 
 Real-Time Gym provides a python interface that enables doing this with minimal effort.
 
-In this part of the tutorial, we will see how to use this interface in order to create a Gym environment for your robot, video game, or other real-time application.
+In this tutorial, we will see how to use this interface in order to create a Gym environment for your robot, video game, or other real-time application.
 From the user's point of view, this environment will work as Gym environments usually do, and therefore will be compatible with many readily implemented Reinforcement Learning (RL) algorithms.
 
 #### Install Real-Time Gym
@@ -223,7 +223,7 @@ def __init__(self):
 The ```get_action_space``` method returns a ```gym.spaces.Box``` object.
 This object defines the shape and bounds of the ```control``` argument that will be passed to the ```send_control``` method.
 
-I our case, we have two actions: ```vel_x``` and ```vel_y```.
+In our case, we have two actions: ```vel_x``` and ```vel_y```.
 Let us say we want them to be constrained between ```-2.0m/s``` and ```2.0m/s```.
 Our ```get_action_space``` method then looks like this:
 ```python
@@ -272,7 +272,7 @@ Instead, when calling step() in a ```rtgym``` environment, an internal procedure
 The step() function will block until this point, when a new observation is retrieved.
 Then, step() will return the observation so that inference can be performed in parallel to the next time-step, and so on.
 
-This is convenient because the user doesn't have to worry about these kind of complicated dynamics and simply alternates between inference and calls to step() as they would usually do with any Gym environment.
+This is convenient because the user doesn't have to worry about these kinds of complicated dynamics and simply alternates between inference and calls to step() as they would usually do with any Gym environment.
 However, this needs to be done repeatedly, otherwise step() will time-out.
 
 Yet, you may still want to artificially 'pause' the environment occasionally, e.g. because you collected a batch of samples, or because you want to pause the whole experiment.
@@ -283,8 +283,7 @@ By default, its behaviour is to send the default action:
 def wait(self):
     self.send_control(self.get_default_action())
 ```
-But you may want to override 
-vior by redefining this method:
+But you may want to override this behavior by redefining the method:
 ```python
 def wait(self):
     self.send_control(np.array([0.0, 0.0], dtype='float32'))
@@ -311,7 +310,7 @@ def get_observation_space(self):
 ```
 
 ---
-We can now implement the RL mechanics of our environment (i.e. is the reward function and whether we consider the task ```done``` in the episodic setting), and a procedure to retrieve observations from our dummy drone.
+We can now implement the RL mechanics of our environment (i.e. the reward function and whether we consider the task ```done``` in the episodic setting), and a procedure to retrieve observations from our dummy drone.
 This is done in the ```get_obs_rew_done``` method.
 
 For this tutorial, we will implement a simple task.
@@ -326,6 +325,7 @@ Additionally, we will end the episode if the task is not completed after 100 tim
 The task is easy, but not as straightforward as it looks.
 Indeed, the presence of random communication delays and the fact that the drone keeps moving in real time makes it difficult to precisely reach the target.
 
+---
 ```get_obs_rew_done``` outputs 3 values:
 - ```obs```: a list of all the components of the last retrieved observation, except for the action buffer
 - ```rew```: a float that is our reward
