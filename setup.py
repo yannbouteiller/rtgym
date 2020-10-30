@@ -15,7 +15,7 @@ setup(name='rtgym',
       author='Yann Bouteiller',
       url='https://github.com/yannbouteiller/rtgym',
       download_url='https://github.com/yannbouteiller/rtgym/archive/v0.3.tar.gz',
-      keywords=['gym', 'real', 'time', 'custom', 'environment', 'reinforcement', 'learning'],
+      keywords=['gym', 'real', 'time', 'custom', 'environment', 'reinforcement', 'learning', 'random', 'delays'],
       install_requires=['gym', 'numpy'],
       classifiers=[
           'Development Status :: 5 - Production/Stable',
