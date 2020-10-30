@@ -7,9 +7,7 @@ Its purpose is to clock your Gym environments in a way that is transparent to th
 ## Quick links
 - [Real-time Gym framework](#real-time-gym-framework)
 - [Tutorial: Implement custom tasks](#tutorial)
-
-## Author:
-- Yann Bouteiller
+- [Contribute](#authors)
 
 ## Real-time Gym framework
 Real-Time Gym (```rtgym```) is a simple and efficient real-time threaded framework built on top of [OpenAI Gym](https://github.com/openai/gym#openai-gym).
@@ -29,8 +27,8 @@ This environment can be used by simply following the usual Gym pattern, therefor
 
 ```python
 from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
-rtgym_config = DEFAULT_CONFIG_DICT
-rtgym_config['interface'] = MyCustomInterface
+my_config = DEFAULT_CONFIG_DICT
+my_config['interface'] = MyCustomInterface
 
 env = gym.make("rtgym:real-time-gym-v0", my_config)
 
@@ -41,7 +39,7 @@ while True:  # when this loop is broken, the current time-step will timeout
 ```
 
 You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
-This method defines the core meachnism of Real-Time Gym environments:
+This method defines the core mechanism of Real-Time Gym environments:
 
 ![Real-Time Gym Framework](https://raw.githubusercontent.com/yannbouteiller/rtgym/main/figures/rt_gym_env.png "Real-Time Gym Framework")
 
@@ -493,3 +491,14 @@ cv2.waitKey(0)
 
 ---
 The complete script for this tutorial is provided [here](https://github.com/yannbouteiller/rtgym/blob/main/rtgym/tuto/tuto.py).
+
+---
+
+## Authors
+All contributions to this project are welcome.
+To contribute, please submit a pull request that includes your name in the Contributors list.
+
+### Maintainers
+- Yann Bouteiller
+
+### Contributors
