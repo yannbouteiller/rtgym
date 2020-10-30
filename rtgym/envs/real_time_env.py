@@ -352,7 +352,7 @@ class RealTimeEnv(Env):
         if self.real_time:
             self._run_time_step(action)
         if done and self.wait_on_done:
-            self.interface.wait()
+            self.wait()
         return obs, rew, done, info
 
     def stop(self):

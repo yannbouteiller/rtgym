@@ -7,14 +7,14 @@ with open("README.md", "r") as fh:
 
 setup(name='rtgym',
       packages=[package for package in find_packages()],
-      version='0.2',
+      version='0.3',
       license='MIT',
       description='Easily implement custom OpenAI Gym environments for real-time applications',
       long_description=long_description,
       long_description_content_type="text/markdown",
       author='Yann Bouteiller',
       url='https://github.com/yannbouteiller/rtgym',
-      download_url='https://github.com/yannbouteiller/rtgym/archive/v0.2.tar.gz',
+      download_url='https://github.com/yannbouteiller/rtgym/archive/v0.3.tar.gz',
       keywords=['gym', 'real', 'time', 'custom', 'environment', 'reinforcement', 'learning'],
       install_requires=['gym', 'numpy'],
       classifiers=[
