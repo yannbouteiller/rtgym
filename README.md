@@ -168,7 +168,7 @@ Instead, we want to control our dummy drone as fast as possible.
 Let us say we want to control it at 20 Hz, i.e. with a time-step of 50ms.
 To keep it simple, let us also say that 50ms is an upper bound of our inference time.
 
-What we need to do in order to make the observation space Markovian in this setting is to augment the available observation with the 3 last sent actions. Indeed, the maximum total delay is 110ms, which is more than 2 and less than 3 time-steps (see the [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966) paper for more explanations).
+What we need to do in order to make the observation space Markovian in this setting is to augment the available observation with the 4 last sent actions. Indeed, taking into account one time-step of 50ms for inference and the transmission delays, the maximum total delay is 160ms, which is more than 3 and less than 4 time-steps (see the [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966) paper for more explanations).
 
 Note that this will be taken care of automatically, so you don't need to worry about it when implementing your RealTimeGymInterface in the next section.
 
@@ -295,7 +295,7 @@ This object describes the structure of the observations returned from the ```res
 In our case, the observation will contain ```pos_x``` and ```pos_y```, which are both constrained between ```-1.0``` and ```1.0``` in our simple 2D world.
 It will also contain target coordinates ```tar_x``` and ```tar_y```, constrained between ```-0.5``` and ```0.5```.
 
-Note that, on top of these observations, the ```rtgym``` framework will automatically append a buffer of the 3 last actions, but the observation space you define here must not take this buffer into account.
+Note that, on top of these observations, the ```rtgym``` framework will automatically append a buffer of the 4 last actions, but the observation space you define here must not take this buffer into account.
 
 In a nutshell, our ```get_observation_space``` method must look like this:
 ```python
@@ -393,7 +393,7 @@ my_config["time_step_duration"] = 0.05
 my_config["start_obs_capture"] = 0.05
 my_config["time_step_timeout_factor"] = 1.0
 my_config["ep_max_length"] = 100
-my_config["act_buf_len"] = 3
+my_config["act_buf_len"] = 4
 my_config["reset_act_buf"] = False
 ```
 The ```"time_step_duration"``` entry defines the duration of the time-step.
@@ -419,7 +419,7 @@ The ```"ep_max_length"``` entry is the maximum length of an episode.
 When this number of time-steps have been performed since the last reset(), ```done``` will be ```True```.
 In the non-episodic setting, set this to ```np.inf```.
 
-The ```"act_buf_len"``` entry is the size of the action buffer. In our case, we need it to contain the 3 last actions.
+The ```"act_buf_len"``` entry is the size of the action buffer. In our case, we need it to contain the 4 last actions.
 
 Finally, the ```"reset_act_buf"``` entry tells whether the action buffer should be reset with default actions when reset() is called.
 In our case, we don't want this to happen, because calls to reset() only change the position of the target, and not the dynamics of the drone.
