@@ -115,6 +115,128 @@ DEFAULT_CONFIG_DICT = {
 }
 
 
+class Benchmark:
+    """
+    Benchmarks of the durations of main operations.
+    A running average of the mean and average deviation are provided for each duration.
+    """
+    def __init__(self, run_avg_factor=0.1):
+        self.run_avg_factor = run_avg_factor
+        self.__b_lock = Lock()
+
+        # times:
+        self.__start_step_time = None
+        self.__end_step_time = None
+        self.__start_retrieve_obs_time = None
+        self.__end_retrieve_obs_time = None
+        self.__start_time_step_time = None
+        self.__end_send_control_time = None
+
+        # averages:
+        self.time_step_duration = None
+        self.step_duration = None
+        self.join_duration = None
+        self.inference_duration = None
+        self.send_control_duration = None
+        self.retrieve_obs_duration = None
+
+        # average deviations:
+        self.time_step_duration_dev = 0.0
+        self.step_duration_dev = 0.0
+        self.join_duration_dev = 0.0
+        self.inference_duration_dev = 0.0
+        self.send_control_duration_dev = 0.0
+        self.retrieve_obs_duration_dev = 0.0
+
+    def get_benchmark_dict(self):
+        """
+        Each key contains a tuple (avg, avg_dev)
+        """
+        self.__b_lock.acquire()
+        res = {
+            "time_step_duration": (self.time_step_duration, self.time_step_duration_dev),
+            "step_duration": (self.step_duration, self.step_duration_dev),
+            "join_duration": (self.join_duration, self.join_duration_dev),
+            "inference_duration": (self.inference_duration, self.inference_duration_dev),
+            "send_control_duration": (self.send_control_duration, self.send_control_duration_dev),
+            "retrieve_obs_duration": (self.retrieve_obs_duration, self.retrieve_obs_duration_dev),
+        }
+        self.__b_lock.release()
+        return res
+
+    def running_average(self, new_val, old_avg, old_avg_dev):
+        """
+        old_avg can be None
+        new_avg_dev is the average deviation (not std)
+        Returns:
+            new_avg, new_avg_dev
+        """
+        if old_avg is not None:
+            delta = new_val - old_avg
+            new_avg = old_avg + self.run_avg_factor * delta
+            new_avg_dev = old_avg_dev + self.run_avg_factor * (abs(delta) - old_avg_dev)
+            return new_avg, new_avg_dev
+        else:
+            return new_val, 0.0
+
+    def start_step_time(self):
+        """
+        before join()
+        """
+        self.__b_lock.acquire()
+        now = time.time()
+        if self.__end_step_time is not None:
+            self.inference_duration, self.inference_duration_dev = self.running_average(new_val=now - self.__end_step_time, old_avg=self.inference_duration, old_avg_dev=self.inference_duration_dev)
+        self.__start_step_time = now
+        self.__b_lock.release()
+
+    def end_step_time(self):
+        """
+        before return
+        """
+        self.__b_lock.acquire()
+        now = time.time()
+        if self.__start_step_time is not None:
+            self.step_duration, self.step_duration_dev = self.running_average(new_val=now - self.__start_step_time, old_avg=self.step_duration, old_avg_dev=self.step_duration_dev)
+        self.__end_step_time = now
+        self.__b_lock.release()
+
+    def start_time_step_time(self):
+        """
+        before run_time_step
+        """
+        self.__b_lock.acquire()
+        now = time.time()
+        if self.__start_time_step_time is not None:
+            self.time_step_duration, self.time_step_duration_dev = self.running_average(new_val=now - self.__start_time_step_time, old_avg=self.time_step_duration, old_avg_dev=self.time_step_duration_dev)
+        if self.__start_step_time is not None:
+            self.join_duration, self.join_duration_dev = self.running_average(new_val=now - self.__start_step_time, old_avg=self.join_duration, old_avg_dev=self.join_duration_dev)
+        self.__start_time_step_time = now
+        self.__b_lock.release()
+
+    def start_retrieve_obs_time(self):
+        self.__b_lock.acquire()
+        now = time.time()
+        self.__start_retrieve_obs_time = now
+        self.__b_lock.release()
+
+    def end_retrieve_obs_time(self):
+        self.__b_lock.acquire()
+        now = time.time()
+        if self.__start_retrieve_obs_time is not None:
+            self.retrieve_obs_duration, self.retrieve_obs_duration_dev = self.running_average(new_val=now - self.__start_retrieve_obs_time, old_avg=self.retrieve_obs_duration, old_avg_dev=self.retrieve_obs_duration_dev)
+        self.__end_retrieve_obs_time = now
+        self.__b_lock.release()
+
+    def end_send_control_time(self):
+        self.__b_lock.acquire()
+        now = time.time()
+        if self.__start_time_step_time is not None:
+            self.send_control_duration, self.send_control_duration_dev = self.running_average(new_val=now - self.__start_time_step_time, old_avg=self.send_control_duration, old_avg_dev=self.send_control_duration_dev)
+        self.__end_send_control_time = now
+        self.__b_lock.release()
+
+
 class RealTimeEnv(Env):
     def __init__(self, config=DEFAULT_CONFIG_DICT):
         """
@@ -169,9 +291,8 @@ class RealTimeEnv(Env):
 
         # environment benchmark:
         self.benchmark = config["benchmark"] if "benchmark" in config else False
-        self.__b_lock = Lock()
-        self.__b_obs_capture_duration = 0.0
         self.running_average_factor = config["running_average_factor"] if "running_average_factor" in config else 0.1
+        self.bench = Benchmark(run_avg_factor=self.running_average_factor)
 
         self.act_in_obs = config["act_in_obs"] if "act_in_obs" in config else True
         self.act_buf_len = config["act_buf_len"] if "act_buf_len" in config else 1
@@ -254,13 +375,21 @@ class RealTimeEnv(Env):
         This function applies the control and launches observation capture at the right timestamp
         !: only one such function must run in parallel (always join thread)
         """
+        if self.benchmark:
+            self.bench.start_time_step_time()
         act = self.act_prepro_func(action) if self.act_prepro_func else action
         self.interface.send_control(act)
+        if self.benchmark:
+            self.bench.end_send_control_time()
         self._update_timestamps()
         now = time.time()
         if now < self.__t_co:  # wait until it is time to capture observation
             time.sleep(self.__t_co - now)
+        if self.benchmark:
+            self.bench.start_retrieve_obs_time()
         self.__update_obs_rew_done()  # capture observation
+        if self.benchmark:
+            self.bench.end_retrieve_obs_time()
         now = time.time()
         if now < self.__t_end:  # wait until the end of the time-step
             time.sleep(self.__t_end - now)
@@ -271,8 +400,6 @@ class RealTimeEnv(Env):
         Returns:
             observation of this step()
         """
-        if self.benchmark:
-            t1 = time.time()
         self.__o_lock.acquire()
         o, r, d = self.interface.get_obs_rew_done()
         if not d:
@@ -284,11 +411,6 @@ class RealTimeEnv(Env):
         self.__obs, self.__rew, self.__done = elt, r, d
         self.__o_set_flag = True
         self.__o_lock.release()
-        if self.benchmark:
-            t = time.time() - t1
-            self.__b_lock.acquire()
-            self.__b_obs_capture_duration = (1.0 - self.running_average_factor) * self.__b_obs_capture_duration + self.running_average_factor * t
-            self.__b_lock.release()
 
     def _retrieve_obs_rew_done(self):
         """
@@ -342,6 +464,8 @@ class RealTimeEnv(Env):
 
         CAUTION: the drone is only 'paused' at the end of the episode (the entire episode must be rolled out before optimizing if the optimization is synchronous)
         """
+        if self.benchmark:
+            self.bench.start_step_time()
         self._join_thread()
         self.current_step += 1
         self.act_buf.append(action)
@@ -353,6 +477,8 @@ class RealTimeEnv(Env):
             self._run_time_step(action)
         if done and self.wait_on_done:
             self.wait()
+        if self.benchmark:
+            self.bench.end_step_time()
         return obs, rew, done, info
 
     def stop(self):
@@ -365,14 +491,10 @@ class RealTimeEnv(Env):
 
     def benchmarks(self):
         """
-        Returns the following running averages when the benchmark option is set:
-            duration of __update_obs_rew_done()
+        Returns a dictionary containing the running averages and average deviations of important durations
         """
         assert self.benchmark, "The benchmark option is not set. Set benchmark=True in the configuration dictionary of the environment"
-        self.__b_lock.acquire()
-        res_obs_capture_duration = self.__b_obs_capture_duration
-        self.__b_lock.release()
-        return res_obs_capture_duration
+        return self.bench.get_benchmark_dict()
 
     def render(self, mode='human'):
         """
