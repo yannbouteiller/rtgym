@@ -554,7 +554,7 @@ Environment benchmarks:
 
 Here, our model is overly simple and our inference duration is only `0.0039` seconds, with an average deviation of `0.00014` seconds.
 
-Importatly, note that retrieving observations and sending controls is almost instantaneous because the drone's communication delays does not influence these operations.
+Importantly, note that retrieving observations and sending controls is almost instantaneous because the drone's communication delays does not influence these operations.
 
 The time-step duration is `0.05` seconds as requested in the configuration dictionary.
 
