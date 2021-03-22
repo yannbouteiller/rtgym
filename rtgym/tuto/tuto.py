@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 
 import time
+import pprint
 
 
 def test_rc_drone():
@@ -94,6 +95,8 @@ my_config["time_step_timeout_factor"] = 1.0
 my_config["ep_max_length"] = 100
 my_config["act_buf_len"] = 4
 my_config["reset_act_buf"] = False
+my_config["benchmark"] = True
+my_config["benchmark_polyak"] = 0.2
 
 env = gym.make("rtgym:real-time-gym-v0", config=my_config)
 
@@ -109,4 +112,8 @@ while not done:
     act = model(obs)
     obs, rew, done, info = env.step(act)
     print(f"rew:{rew}")
+
+print("Environment benchmarks:")
+pprint.pprint(env.benchmarks())
+
 cv2.waitKey(0)

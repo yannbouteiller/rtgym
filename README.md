@@ -5,15 +5,28 @@ Real-Time Gym (```rtgym```) is typically needed when trying to use Reinforcement
 Its purpose is to clock your Gym environments in a way that is transparent to the user.
 
 ## Quick links
-- [Real-time Gym framework](#real-time-gym-framework)
+- [Installation](#installation)
+- [Real-time Gym presentation](#real-time-gym-framework)
 - [Tutorial: Implement custom tasks](#tutorial)
+  - [Create a RealTimeGymInterface](#create-a-realtimegyminterface)
+  - [Create a configuration dictionary](#create-a-configuration-dictionary)
+  - [Instantiate your real-time environment](#instantiate-the-custom-real-time-environment)
+  - [Bonus 1: Implement a render method](#bonus-1-implement-a-render-method)
+  - [Bonus 2: Benchmark your environment](#bonus-2-benchmark-your-environment)
+  - [Bonus 3: Pro tips](#bonus-3-pro-tips)
 - [Contribute](#authors)
+
+## Installation
+`rtgym` can be installed from PyPI:
+````bash
+pip install rtgym
+````
 
 ## Real-time Gym framework
 Real-Time Gym (```rtgym```) is a simple and efficient real-time threaded framework built on top of [OpenAI Gym](https://github.com/openai/gym#openai-gym).
 It is coded in python.
 
-```rtgym``` enables efficient real-time implementations of Delayed Markov Decision Processes in real-world applications.
+```rtgym``` enables real-time implementations of Delayed Markov Decision Processes in real-world applications.
 Its purpose is to elastically constrain the times at which actions are sent and observations are retrieved, in a way that is transparent to the user.
 It provides a minimal abstract python interface that the user simply customizes for their own application.
 
@@ -51,6 +64,8 @@ This happens either because the environment has been 'paused', or because the sy
 
 ## Tutorial
 This tutorial will teach you how to implement a Real-Time Gym environment for your custom application, using ```rtgym```.
+
+The complete script for this tutorial is provided [here](https://github.com/yannbouteiller/rtgym/blob/main/rtgym/tuto/tuto.py).
 
 ### Custom Real-Time Gym environment
 #### Introduction
@@ -145,7 +160,7 @@ In this code snippet, we control the dummy drone at about 20Hz.
 For the 5 first iteration, we send a constant velocity control, and for the 5 last iterations, we ask the dummy drone to stop moving.
 The output looks something like this:
 
-```bash
+```console
 iteration 0, sent vel: vel_x:0.1, vel_y:0.5 - received pos: x:0.000, y:0.000
 iteration 1, sent vel: vel_x:0.1, vel_y:0.5 - received pos: x:0.000, y:0.000
 iteration 2, sent vel: vel_x:0.1, vel_y:0.5 - received pos: x:0.003, y:0.015
@@ -450,7 +465,9 @@ while not done:
     print(f"rew:{rew}")
 ```
 
-#### Bonus: implement a render() method
+---
+
+#### Bonus 1: Implement a render() method
 Optionally, you can also implement a ```render``` method in your ```RealTimeGymInterface```.
 This allows you to call ```env.render()``` to display a visualization of your environment.
 
@@ -490,7 +507,85 @@ cv2.waitKey(0)
 ```
 
 ---
-The complete script for this tutorial is provided [here](https://github.com/yannbouteiller/rtgym/blob/main/rtgym/tuto/tuto.py).
+
+#### Bonus 2: Benchmark your environment
+
+`rtgym` provides a way of timing the important operations happening in your real-time environment.
+
+In order to use the benchmark option, set the corresponding entry to `True` in the configuration dictionary:
+
+```python
+my_config['benchmark'] = True
+```
+
+The provided benchmarks will contain means and average deviations of critical operations, such as your inference duration and observation retrieval duration.
+
+These metrics are estimated through Polyak averaging.
+The Polyak factor sets the dampening of these metrics.
+A value close to `0.0` will be precise but slow to converge, whereas a value close to `1.0` will be fast and noisy.
+This factor can be customized:
+
+```python
+my_config['benchmark_polyak'] = 0.2
+```
+
+The benchmarks can then be retrieved at any time from the environment once it is instantiated.
+They are provided as a dictionary of tuples.
+In each tuple, the first value is the average, and the second value is the average deviation:
+
+```python
+import pprint  # pretty print for visualizing the dictionary nicely
+
+print("Environment benchmarks:")
+pprint.pprint(env.benchmarks())
+```
+
+The output looks like this:
+
+```console
+Environment benchmarks:
+{'inference_duration': (0.003926419229090126, 0.00014549072704012842),
+ 'join_duration': (0.04428279383539383, 0.005076410880242647),
+ 'retrieve_obs_duration': (0.0, 0.0),
+ 'send_control_duration': (0.00047557685000546734, 0.0004940671210374551),
+ 'step_duration': (0.044353588965807995, 0.00507181527372258),
+ 'time_step_duration': (0.05009265612492255, 0.0007064833473411327)}
+```
+
+Here, our model is overly simple and our inference duration is only `0.0039` seconds, with an average deviation of `0.00014` seconds.
+
+Importatly, note that retrieving observations and sending controls is almost instantaneous because the drone's communication delays does not influence these operations.
+
+The time-step duration is `0.05` seconds as requested in the configuration dictionary.
+
+Most of this duration is spent joining the `rtgym` thread, i.e. waiting for the previous time-step to end.
+Therefore, we could increase the control frequency here.
+However, note that doing this implies using a longer action buffer.
+
+---
+
+#### Bonus 3: Pro tips
+
+The time-step's maximum elasticity defines the tolerance of your environment in terms of time-wise precision.
+It is set in the configuration dictionary as the `"time_step_timeout_factor"` entry.
+This can be any value `> 0.0`.
+
+When this is set close to `0.0`, the environment will not tolerate uncertainty in your custom interface.
+
+When this is e.g. `0.5`, a time-step will be allowed to overflow for half its nominal duration.
+This overflow will be compensated in future time-steps.
+
+Usually, you don't want to set this value too high, because time-wise variance is probably what you want to avoid when using `rtgym`.
+However, in some special cases, you may actually want your time-steps to overflow repeatedly.
+
+In particular, if your inference duration is very small compared to your observation retrieval duration, you may want to set your observation retrieval time at the end of the time-step (default behavior), so that observation retrieval always overflows for almost a whole time-step.
+
+This is because inference will happen directly after the observation is captured, and the computed action will be applied at the beginning of the next time-step.
+You may want this to be as tight as possible.
+
+In such situation, keep in mind that inference must end before the end of this next time-step, since the computed action is to be applied there.
+Otherwise, your time-steps will timeout.
+
 
 ---
 

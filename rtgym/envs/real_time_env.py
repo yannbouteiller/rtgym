@@ -1,3 +1,15 @@
+"""Real-Time Gym environment core.
+
+The final environment instantiated by gym.make is RealTimeEnv.
+The developer defines a custom implementation of the RealTimeGymInterface abstract class.
+Then, they create a config dictionary by copying DEFAULT_CONFIG_DICT.
+In this config, they replace the 'interface' entry with their custom RealTimeGymInterface.
+Their custom RealTimeGymInterface may implement __init__(*args, **kwargs).
+The args and kwargs are passed through the 'interface_args' and 'interface_kwargs' entries of the config.
+Other entries define Real-Time Gym parameters, such as the nominal duration of the elastic time-step.
+"""
+
+
 from gym import Env
 import gym.spaces as spaces
 import time
@@ -10,16 +22,23 @@ import warnings
 # All user-defined interfaces should be subclasses of RealTimeGymInterface
 
 class RealTimeGymInterface:
-    """
-    Implement this class for your application
+    """Main developer interface.
+
+    Implement this class for your application.
+    Then copy the DEFAULT_CONFIG_DICT and replace the 'interface' entry with your custom RealTimeGymInterface.
     """
     def send_control(self, control):
-        """
-        Non-blocking function
-        Applies the action given by the RL policy
-        If control is None, does nothing
+        """Sends control to the device.
+
+        Non-blocking function.
+        Applies the action given by the RL policy.
+        If control is None, should do nothing.
+        e.g.
+        if control is not None:
+            ...
+
         Args:
-            control: np.array of the dimension of the action-space
+            control: np.array of the dimension of the action-space (possibly None: do nothing)
         """
         # if control is not None:
         #     ...
@@ -27,46 +46,53 @@ class RealTimeGymInterface:
         raise NotImplementedError
 
     def reset(self):
-        """
+        """Resets the episode.
+
         Returns:
             obs: must be a list
-        Note: Do NOT put the action buffer in the returned obs (automated)
+
+        Note: Do NOT put the action buffer in the returned obs (automated).
         """
         # return obs
 
         raise NotImplementedError
 
     def wait(self):
-        """
+        """The agent stays 'paused', waiting in position.
+
         Non-blocking function
-        The agent stays 'paused', waiting in position
         """
         self.send_control(self.get_default_action())
 
     def get_obs_rew_done(self):
-        """
+        """Returns observation, reward and done from the device.
+
         Returns:
             obs: list
             rew: scalar
             done: boolean
-        Note: Do NOT put the action buffer in obs (automated)
+
+        Note: Do NOT put the action buffer in obs (automated).
         """
         # return obs, rew, done
 
         raise NotImplementedError
 
     def get_observation_space(self):
-        """
+        """Returns the observation space.
+
         Returns:
             observation_space: gym.spaces.Tuple
-        Note: Do NOT put the action buffer here (automated)
+
+        Note: Do NOT put the action buffer here (automated).
         """
         # return spaces.Tuple(...)
 
         raise NotImplementedError
 
     def get_action_space(self):
-        """
+        """Returns the action space.
+
         Returns:
             action_space: gym.spaces.Box
         """
@@ -75,18 +101,19 @@ class RealTimeGymInterface:
         raise NotImplementedError
 
     def get_default_action(self):
-        """
+        """Initial action at episode start, and in the buffer.
+
         Returns:
             default_action: numpy array of the dimension of the action space
-        initial action at episode start
         """
         # return np.array([...], dtype='float32')
 
         raise NotImplementedError
 
     def render(self):
-        """
-        Optional: implement this if you want to use the render() method of the gym environment
+        """Renders the environment (optional).
+
+        Implement this if you want to use the render() method of the gym environment.
         """
         pass
 
@@ -103,22 +130,34 @@ DEFAULT_CONFIG_DICT = {
     # smaller than one time-step, and you want to capture it directly in your interface for convenience. Otherwise,
     # you need to perform observation capture in a parallel process and simply retrieve the last available observation
     # in the get_obs_rew_done() and reset() methods of your interface
-    "time_step_timeout_factor": 1.0,  # maximum elasticity in (fraction or number of time-steps)
+    "time_step_timeout_factor": 1.0,  # maximum elasticity in (fraction or number of) time-steps
     "ep_max_length": 1000,  # maximum episode length
     "real_time": True,  # True unless you want to revert to the usual turn-based RL setting (not tested yet)
     "async_threading": True,  # True unless you want to revert to the usual turn-based RL setting (not tested yet)
     "act_in_obs": True,  # When True, the action buffer will be appended to observations
-    "act_buf_len": 1,  # Length of the action buffer (max total delay + max observation capture duration, in time-steps)
+    "act_buf_len": 1,  # Length of the action buffer (should be max total delay + max observation capture duration, in time-steps)
     "reset_act_buf": True,  # When True, the action buffer will be filled with default actions at reset
-    "benchmark": False,  # When True, a simple benchmark will be run to estimate the observation capture duration
+    "benchmark": False,  # When True, a simple benchmark will be run to estimate useful timing metrics
+    "benchmark_polyak": 0.1,  # Polyak averaging factor for the benchmarks (0.0 < x <= 1); smaller is slower, bigger is noisier
     "wait_on_done": False,  # Whether the wait() method should be called when done is True
 }
+"""Default configuration dictionary of Real-Time Gym.
+
+Copy this dictionary and pass it as argument to gym.make.
+
+    Typical usage example:
+
+    my_config = DEFAULT_CONFIG_DICT
+    my_config["interface"] = MyRealTimeInterface
+    env = gym.make("rtgym:real-time-gym-v0", config=my_config)
+"""
 
 
 class Benchmark:
-    """
-    Benchmarks of the durations of main operations.
+    """Benchmarks of the durations of main operations.
+
     A running average of the mean and average deviation are provided for each duration.
+    The results are returned as a dictionary of (average, average_deviation) entries.
     """
     def __init__(self, run_avg_factor=0.1):
         self.run_avg_factor = run_avg_factor
@@ -149,8 +188,7 @@ class Benchmark:
         self.retrieve_obs_duration_dev = 0.0
 
     def get_benchmark_dict(self):
-        """
-        Each key contains a tuple (avg, avg_dev)
+        """Each key contains a tuple (avg, avg_dev)
         """
         self.__b_lock.acquire()
         res = {
@@ -165,9 +203,14 @@ class Benchmark:
         return res
 
     def running_average(self, new_val, old_avg, old_avg_dev):
-        """
+        """Running average.
+
         old_avg can be None
         new_avg_dev is the average deviation (not std)
+
+        Args:
+            new_val, old_avg, old_avg_dev
+
         Returns:
             new_avg, new_avg_dev
         """
@@ -180,8 +223,7 @@ class Benchmark:
             return new_val, 0.0
 
     def start_step_time(self):
-        """
-        before join()
+        """before join().
         """
         self.__b_lock.acquire()
         now = time.time()
@@ -191,8 +233,7 @@ class Benchmark:
         self.__b_lock.release()
 
     def end_step_time(self):
-        """
-        before return
+        """before return.
         """
         self.__b_lock.acquire()
         now = time.time()
@@ -202,8 +243,7 @@ class Benchmark:
         self.__b_lock.release()
 
     def start_time_step_time(self):
-        """
-        before run_time_step
+        """before run_time_step.
         """
         self.__b_lock.acquire()
         now = time.time()
@@ -238,21 +278,11 @@ class Benchmark:
 
 
 class RealTimeEnv(Env):
-    def __init__(self, config=DEFAULT_CONFIG_DICT):
-        """
-        :param interface: (callable) external interface class (required)
-        :param ep_max_length: (int) the max length of each episodes in timesteps
-        :param real_time: bool: whether to use the RTRL setting
-        :param async_threading: bool (optional, default: True): whether actions are executed asynchronously in the RTRL setting.
-            Typically this is useful for the real world and for external simulators
-        :param time_step_duration: float (optional, default 0.0): seconds slept after apply_action() (~ time-step duration)
-        :param act_in_obs: bool (optional, default True): whether to augment the observation with the action buffer (DCRL)
-        :param act_buf_len: int (optional, default 1): length of the action buffer (DCRL)
-        :param default_action: float (optional, default None): default action to append at reset when the previous is True
-        :param act_prepro_func: function (optional, default None): function that maps the action input to the actual applied action
-        :param obs_prepro_func: function (optional, default None): function that maps the observation output to the actual returned observation
-        :param reset_act_buf: bool (optional, defaut True): whether action buffer should be re-initialized at reset
-        :param wait_on_done: bool (optional, defaut False): whether the wait() method should be called when done is True
+    def __init__(self, config: dict=DEFAULT_CONFIG_DICT):
+        """Final class instantiated by gym.make.
+
+        Args:
+            config: a custom implementation of DEFAULT_CONFIG_DICT
         """
         # interface:
         interface_cls = config["interface"]
@@ -291,8 +321,8 @@ class RealTimeEnv(Env):
 
         # environment benchmark:
         self.benchmark = config["benchmark"] if "benchmark" in config else False
-        self.running_average_factor = config["running_average_factor"] if "running_average_factor" in config else 0.1
-        self.bench = Benchmark(run_avg_factor=self.running_average_factor)
+        self.benchmark_polyak = config["benchmark_polyak"] if "benchmark_polyak" in config else 0.1
+        self.bench = Benchmark(run_avg_factor=self.benchmark_polyak)
 
         self.act_in_obs = config["act_in_obs"] if "act_in_obs" in config else True
         self.act_buf_len = config["act_buf_len"] if "act_buf_len" in config else 1
@@ -307,8 +337,8 @@ class RealTimeEnv(Env):
         self.last_action = self.default_action
 
     def _update_timestamps(self):
-        """
-        This is called at the beginning of each time-step
+        """This is called at the beginning of each time-step.
+
         If the previous time-step has timed out, the beginning of the time-step is set to now
         Otherwise, the beginning of the time-step is the beginning of the previous time-step + the time-step duration
         The observation starts being captured start_obs_capture_factor time-step after the beginning of the time-step
@@ -329,16 +359,16 @@ class RealTimeEnv(Env):
         self.__t_end = self.__t_start + self.time_step_duration  # update time at which the new time-step should finish
 
     def _join_thread(self):
-        """
-        This is called at the beginning of every user-side API functions (step(), reset()...) for thread safety
+        """This is called at the beginning of every user-side API functions (step(), reset()...) for thread safety.
+
         This ensures that the previous time-step is completed when starting a new one
         """
         if self.async_threading:
             self._at_thread.join()
 
     def _run_time_step(self, *args, **kwargs):
-        """
-        This is what must be called in step() to apply an action
+        """This is called in step() to apply an action.
+
         Call this with the args and kwargs expected by self.__send_act_get_obs_and_wait()
         This in turn calls self.__send_act_get_obs_and_wait()
         In action-threading, self.__send_act_get_obs_and_wait() is called in a new Thread
@@ -350,8 +380,8 @@ class RealTimeEnv(Env):
             self._at_thread.start()
 
     def _initialize(self):
-        """
-        This is called at first reset() for rllib compatibility
+        """This is called at first reset() for e.g. rllib compatibility.
+
         All costly initializations should be performed here
         This allows creating a dummy environment for retrieving action space and observation space without performing these initializations
         """
@@ -371,9 +401,9 @@ class RealTimeEnv(Env):
         return t
 
     def __send_act_get_obs_and_wait(self, action):
-        """
-        This function applies the control and launches observation capture at the right timestamp
-        !: only one such function must run in parallel (always join thread)
+        """Applies the control and launches observation capture at the right timestamp.
+
+        Caution: only one such function must run in parallel (always join thread)
         """
         if self.benchmark:
             self.bench.start_time_step_time()
@@ -395,8 +425,8 @@ class RealTimeEnv(Env):
             time.sleep(self.__t_end - now)
 
     def __update_obs_rew_done(self):
-        """
-        Captures o, r, d asynchronously
+        """Captures o, r, d asynchronously.
+
         Returns:
             observation of this step()
         """
@@ -413,8 +443,7 @@ class RealTimeEnv(Env):
         self.__o_lock.release()
 
     def _retrieve_obs_rew_done(self):
-        """
-        Waits for new available o r d and retrieves them
+        """Waits for new available o r d and retrieves them.
         """
         c = True
         while c:
@@ -433,8 +462,8 @@ class RealTimeEnv(Env):
             self.act_buf.append(self.default_action)
 
     def reset(self):
-        """
-        Use reset() to reset the environment
+        """Resets the environment.
+
         Returns:
             obs
         """
@@ -455,14 +484,16 @@ class RealTimeEnv(Env):
         return elt
 
     def step(self, action):
-        """
-        Call this function to perform a step
+        """Performs an environment step.
+
         Args:
             action: numpy.array: control value
+
         Returns:
             obs, rew, done, info
 
-        CAUTION: the drone is only 'paused' at the end of the episode (the entire episode must be rolled out before optimizing if the optimization is synchronous)
+        CAUTION: this is REAL-TIME.
+        If you want to "pause" the environment at some point, use the wait() method.
         """
         if self.benchmark:
             self.bench.start_step_time()
@@ -485,20 +516,30 @@ class RealTimeEnv(Env):
         self._join_thread()
 
     def wait(self):
+        """"Pauses" the environment.
+        """
         self._join_thread()
         self.is_waiting = True
         self.interface.wait()
 
     def benchmarks(self):
+        """Gets environment benchmarks.
+
+        Returns:
+            A dictionary containing the running averages and average deviations of important durations
         """
-        Returns a dictionary containing the running averages and average deviations of important durations
-        """
-        assert self.benchmark, "The benchmark option is not set. Set benchmark=True in the configuration dictionary of the environment"
+        assert self.benchmark, "The benchmark option is not set. Set benchmark=True in the configuration dictionary of the rtgym environment"
         return self.bench.get_benchmark_dict()
 
-    def render(self, mode='human'):
+    def render(self, mode='human', join_thread=False):
+        """Visually renders the current state of the environment.
+
+        Caution: when join_thread is True, render() is not compatible with benchmarks().
+
+        Args:
+            mode: not used
+            join_thread: set this to True if your render method performs thread-unsafe operations
         """
-        Visually renders the current state of the environment
-        """
-        self._join_thread()
+        if join_thread:
+            self._join_thread()
         self.interface.render()
