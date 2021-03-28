@@ -14,6 +14,7 @@ Its purpose is to clock your Gym environments in a way that is transparent to th
   - [Bonus 1: Implement a render method](#bonus-1-implement-a-render-method)
   - [Bonus 2: Benchmark your environment](#bonus-2-benchmark-your-environment)
   - [Bonus 3: Pro tips](#bonus-3-pro-tips)
+  - [Full python script](https://github.com/yannbouteiller/rtgym/blob/main/rtgym/tuto/tuto.py)
 - [Contribute](#authors)
 
 ## Installation
