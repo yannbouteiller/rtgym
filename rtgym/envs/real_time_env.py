@@ -64,17 +64,18 @@ class RealTimeGymInterface:
         """
         self.send_control(self.get_default_action())
 
-    def get_obs_rew_done(self):
-        """Returns observation, reward and done from the device.
+    def get_obs_rew_done_info(self):
+        """Returns observation, reward, done and info from the device.
 
         Returns:
             obs: list
             rew: scalar
-            done: boolean
+            done: bool
+            info: dict
 
         Note: Do NOT put the action buffer in obs (automated).
         """
-        # return obs, rew, done
+        # return obs, rew, done, info
 
         raise NotImplementedError
 
@@ -129,7 +130,7 @@ DEFAULT_CONFIG_DICT = {
     # start_obs_capture should be the same as "time_step_duration" unless observation capture is non-instantaneous and
     # smaller than one time-step, and you want to capture it directly in your interface for convenience. Otherwise,
     # you need to perform observation capture in a parallel process and simply retrieve the last available observation
-    # in the get_obs_rew_done() and reset() methods of your interface
+    # in the get_obs_rew_done_info() and reset() methods of your interface
     "time_step_timeout_factor": 1.0,  # maximum elasticity in (fraction or number of) time-steps
     "ep_max_length": 1000,  # maximum episode length
     "real_time": True,  # True unless you want to revert to the usual turn-based RL setting (not tested yet)
@@ -317,6 +318,7 @@ class RealTimeEnv(Env):
         self.__obs = None
         self.__rew = None
         self.__done = None
+        self.__info = None
         self.__o_set_flag = False
 
         # environment benchmark:
@@ -431,31 +433,31 @@ class RealTimeEnv(Env):
             observation of this step()
         """
         self.__o_lock.acquire()
-        o, r, d = self.interface.get_obs_rew_done()
+        o, r, d, i = self.interface.get_obs_rew_done_info()
         if not d:
             d = (self.current_step >= self.ep_max_length)
         elt = o
         if self.obs_prepro_func:
             elt = self.obs_prepro_func(elt)
         elt = tuple(elt)
-        self.__obs, self.__rew, self.__done = elt, r, d
+        self.__obs, self.__rew, self.__done, self.__info = elt, r, d, i
         self.__o_set_flag = True
         self.__o_lock.release()
 
-    def _retrieve_obs_rew_done(self):
-        """Waits for new available o r d and retrieves them.
+    def _retrieve_obs_rew_done_info(self):
+        """Waits for new available o r d i and retrieves them.
         """
         c = True
         while c:
             self.__o_lock.acquire()
             if self.__o_set_flag:
-                elt, r, d = self.__obs, self.__rew, self.__done
+                elt, r, d, i = self.__obs, self.__rew, self.__done, self.__info
                 self.__o_set_flag = False
                 c = False
             self.__o_lock.release()
         if self.act_in_obs:
             elt = tuple((*elt, *tuple(self.act_buf),))
-        return elt, r, d
+        return elt, r, d, i
 
     def init_action_buffer(self):
         for _ in range(self.act_buf_len):
@@ -502,8 +504,7 @@ class RealTimeEnv(Env):
         self.act_buf.append(action)
         if not self.real_time:
             self._run_time_step(action)
-        obs, rew, done = self._retrieve_obs_rew_done()
-        info = {}
+        obs, rew, done, info = self._retrieve_obs_rew_done_info()
         if self.real_time:
             self._run_time_step(action)
         if done and self.wait_on_done:

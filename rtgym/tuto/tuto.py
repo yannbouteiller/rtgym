@@ -57,14 +57,15 @@ class MyRealTimeInterface(RealTimeGymInterface):
         self.target[1] = np.random.uniform(-0.5, 0.5)
         return [pos_x, pos_y, self.target[0], self.target[1]]
 
-    def get_obs_rew_done(self):
+    def get_obs_rew_done_info(self):
         pos_x, pos_y = self.rc_drone.get_observation()
         tar_x = self.target[0]
         tar_y = self.target[1]
         obs = [pos_x, pos_y, tar_x, tar_y]
         rew = -np.linalg.norm(np.array([pos_x, pos_y], dtype=np.float32) - self.target)
         done = rew > -0.01
-        return obs, rew, done
+        info = {}
+        return obs, rew, done, info
 
     def wait(self):
         self.send_control(self.get_default_action())

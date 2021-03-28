@@ -17,8 +17,8 @@ class DummyInterface(RealTimeGymInterface):
     def reset(self):
         return [time.time(), self.control, self.control_time]
 
-    def get_obs_rew_done(self):
-        return [time.time(), self.control, self.control_time], 0.0, False
+    def get_obs_rew_done_info(self):
+        return [time.time(), self.control, self.control_time], 0.0, False, {}
 
     def get_observation_space(self):
         ob = gym.spaces.Box(low=np.array([0.0]), high=np.array([np.inf]), dtype=np.float32)
