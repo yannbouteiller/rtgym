@@ -526,6 +526,8 @@ class RealTimeEnv(Env):
     def benchmarks(self):
         """Gets environment benchmarks.
 
+        Caution: not compatible with render(join_thread=True)
+
         Returns:
             A dictionary containing the running averages and average deviations of important durations
         """
@@ -535,11 +537,11 @@ class RealTimeEnv(Env):
     def render(self, mode='human', join_thread=False):
         """Visually renders the current state of the environment.
 
-        Caution: when join_thread is True, render() is not compatible with benchmarks().
-
         Args:
             mode: not used
-            join_thread: set this to True if your render method performs thread-unsafe operations
+            join_thread: set this to True if your render method performs unsafe operations.
+                The render method of your interface is called outside of the Real-Time Gym thread.
+                Caution: when join_thread is True, render() is not compatible with benchmarks().
         """
         if join_thread:
             self._join_thread()
