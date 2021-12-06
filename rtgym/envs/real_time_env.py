@@ -16,6 +16,7 @@ import time
 from collections import deque
 from threading import Thread, Lock
 import warnings
+import numpy as np
 
 
 # General Interface class ==============================================================================================
@@ -132,7 +133,7 @@ DEFAULT_CONFIG_DICT = {
     # you need to perform observation capture in a parallel process and simply retrieve the last available observation
     # in the get_obs_rew_done_info() and reset() methods of your interface
     "time_step_timeout_factor": 1.0,  # maximum elasticity in (fraction or number of) time-steps
-    "ep_max_length": 1000,  # maximum episode length
+    "ep_max_length": np.inf,  # maximum episode length
     "real_time": True,  # True unless you want to revert to the usual turn-based RL setting (not tested yet)
     "async_threading": True,  # True unless you want to revert to the usual turn-based RL setting (not tested yet)
     "act_in_obs": True,  # When True, the action buffer will be appended to observations
