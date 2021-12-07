@@ -16,6 +16,7 @@ Its purpose is to clock your Gym environments in a way that is transparent to th
   - [Bonus 3: Pro tips](#bonus-3-pro-tips)
   - [Full python script](https://github.com/yannbouteiller/rtgym/blob/main/rtgym/tuto/tuto.py)
 - [Contribute](#authors)
+- [Sponsors](#sponsors)
 
 ## Installation
 `rtgym` can be installed from PyPI:
@@ -600,3 +601,10 @@ To contribute, please submit a pull request that includes your name in the Contr
 - Yann Bouteiller
 
 ### Contributors
+
+## Sponsors:
+
+Many thanks to our sponsors for their support!
+
+![mist](figures/mistlogo.png)
+[MISTlab - Polytechnique Montreal](https://mistlab.ca)
