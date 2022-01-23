@@ -82,6 +82,6 @@ class DummyRCDrone:
             self._send_obs(pos_x, pos_y)
             pos_x = pos_x + vel_x * self.control_sleep
             pos_y = pos_y + vel_y * self.control_sleep
-            clip(pos_x, - self.world_size, self.world_size)
-            clip(pos_y, - self.world_size, self.world_size)
+            pos_x = clip(pos_x, - self.world_size, self.world_size)
+            pos_y = clip(pos_y, - self.world_size, self.world_size)
             time.sleep(self.control_sleep)
