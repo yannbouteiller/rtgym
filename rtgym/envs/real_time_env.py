@@ -476,6 +476,8 @@ class RealTimeEnv(Env):
         self.current_step = 0
         if self.reset_act_buf:
             self.init_action_buffer()
+        else:
+            self.act_buf.append(self.default_action)
         elt = self.interface.reset()
         if self.act_in_obs:
             elt = elt + list(self.act_buf)

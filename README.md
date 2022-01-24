@@ -570,6 +570,8 @@ However, note that doing this would imply using a longer action buffer.
 
 #### Bonus 3: Pro tips
 
+##### a) Elasticity
+
 The time-step's maximum elasticity defines the tolerance of your environment in terms of time-wise precision.
 It is set in the configuration dictionary as the `"time_step_timeout_factor"` entry.
 This can be any value `> 0.0`.
@@ -590,6 +592,14 @@ You may want this to be as tight as possible.
 In such situation, keep in mind that inference must end before the end of this next time-step, since the computed action is to be applied there.
 Otherwise, your time-steps will timeout.
 
+##### b) Reset
+
+In `rtgym`, the default action is sent when `reset()` is called.
+This is to maintain the real-time flow of time-steps during reset transitions.
+
+It may happen that you prefer to repeat the previous action instead, for instance because it is hard in your application to implement a no-op action.
+
+To achieve this behavior, you can simply replace the `default_action` attribute of your environment with the action that you want being sent, right before calling `reset()`.
 
 ---
 
