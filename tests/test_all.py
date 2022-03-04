@@ -43,7 +43,7 @@ config["act_buf_len"] = 1
 class TestEnv(unittest.TestCase):
     def test_timing(self):
         epsilon = 0.01
-        env = gym.make("rtgym:real_time_gym-v0", config=config)
+        env = gym.make("real-time-gym-v0", config=config)
         obs1 = env.reset()
         elapsed_since_obs1_capture = time.time() - obs1[0]
         self.assertGreater(epsilon, elapsed_since_obs1_capture)

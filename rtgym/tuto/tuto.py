@@ -99,7 +99,7 @@ my_config["reset_act_buf"] = False
 my_config["benchmark"] = True
 my_config["benchmark_polyak"] = 0.2
 
-env = gym.make("rtgym:real-time-gym-v0", config=my_config)
+env = gym.make("real-time-gym-v0", config=my_config)
 
 
 def model(obs):

@@ -45,7 +45,7 @@ from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
 my_config = DEFAULT_CONFIG_DICT
 my_config['interface'] = MyCustomInterface
 
-env = gym.make("rtgym:real-time-gym-v0", my_config)
+env = gym.make("real-time-gym-v0", my_config)
 
 obs = env.reset()
 while True:  # when this loop is broken, the current time-step will timeout
@@ -452,7 +452,7 @@ We are all done!
 Instantiating our Gym environment is now as simple as:
 
 ```python
-env = gym.make("rtgym:real-time-gym-v0", config=my_config)
+env = gym.make("real-time-gym-v0", config=my_config)
 ``` 
 
 We can use it as any usual Gym environment:

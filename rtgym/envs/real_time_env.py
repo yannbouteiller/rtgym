@@ -151,7 +151,7 @@ Copy this dictionary and pass it as argument to gym.make.
 
     my_config = DEFAULT_CONFIG_DICT
     my_config["interface"] = MyRealTimeInterface
-    env = gym.make("rtgym:real-time-gym-v0", config=my_config)
+    env = gym.make("real-time-gym-v0", config=my_config)
 """
 
 
