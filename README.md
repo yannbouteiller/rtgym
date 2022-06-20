@@ -45,7 +45,7 @@ from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
 my_config = DEFAULT_CONFIG_DICT
 my_config['interface'] = MyCustomInterface
 
-env = gym.make("real-time-gym-v0", my_config)
+env = gym.make("real-time-gym-v0", my_config, disable_env_checker=True)
 
 obs = env.reset()
 while True:  # when this loop is broken, the current time-step will timeout
