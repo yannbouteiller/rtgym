@@ -55,17 +55,23 @@ class MyRealTimeInterface(RealTimeGymInterface):
         pos_x, pos_y = self.rc_drone.get_observation()
         self.target[0] = np.random.uniform(-0.5, 0.5)
         self.target[1] = np.random.uniform(-0.5, 0.5)
-        return [pos_x, pos_y, self.target[0], self.target[1]]
+        return [np.array([pos_x], dtype='float32'),
+                np.array([pos_y], dtype='float32'),
+                np.array([self.target[0]], dtype='float32'),
+                np.array([self.target[1]], dtype='float32')], {}
 
-    def get_obs_rew_done_info(self):
+    def get_obs_rew_terminated_info(self):
         pos_x, pos_y = self.rc_drone.get_observation()
         tar_x = self.target[0]
         tar_y = self.target[1]
-        obs = [pos_x, pos_y, tar_x, tar_y]
+        obs = [np.array([pos_x], dtype='float32'),
+               np.array([pos_y], dtype='float32'),
+               np.array([tar_x], dtype='float32'),
+               np.array([tar_y], dtype='float32')]
         rew = -np.linalg.norm(np.array([pos_x, pos_y], dtype=np.float32) - self.target)
-        done = rew > -0.01
+        terminated = rew > -0.01
         info = {}
-        return obs, rew, done, info
+        return obs, rew, terminated, info
 
     def wait(self):
         self.send_control(self.get_default_action())
@@ -101,18 +107,31 @@ my_config["benchmark_polyak"] = 0.2
 
 env = gym.make("real-time-gym-v0", config=my_config)
 
+obs_space = env.observation_space
+act_space = env.action_space
+
+print("==============================")
+print(f"Observation space:\n{obs_space}")
+print(f"Action space:\n{act_space}")
+print("==============================")
+
 
 def model(obs):
-    return np.array([obs[2] - obs[0], obs[3] - obs[1]], dtype=np.float32) * 20.0
+    return np.clip(np.concatenate((obs[2] - obs[0], obs[3] - obs[1])) * 20.0, -2.0, 2.0)
 
 
-done = False
-obs = env.reset()
-while not done:
+terminated, truncated = False, False
+obs, info = env.reset()
+while not (terminated or truncated):
     env.render()
     act = model(obs)
-    obs, rew, done, info = env.step(act)
+    obs, rew, terminated, truncated, info = env.step(act)
     print(f"rew:{rew}")
+
+if terminated:
+    print(f"Task complete.")
+elif truncated:
+    print(f"Episode truncated due to time-steps limit.")
 
 print("Environment benchmarks:")
 pprint.pprint(env.benchmarks())

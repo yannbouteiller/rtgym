@@ -50,11 +50,12 @@ class RealTimeGymInterface:
         """Resets the episode.
 
         Returns:
-            obs: must be a list
+            obs: must be a list (corresponding to the tuple from get_observation_space)
+            info: must be a dictionary
 
         Note: Do NOT put the action buffer in the returned obs (automated).
         """
-        # return obs
+        # return obs, info
 
         raise NotImplementedError
 
@@ -65,18 +66,20 @@ class RealTimeGymInterface:
         """
         self.send_control(self.get_default_action())
 
-    def get_obs_rew_done_info(self):
-        """Returns observation, reward, done and info from the device.
+    def get_obs_rew_terminated_info(self):
+        """Returns observation, reward, terminated and info from the device.
+
+        Note:
 
         Returns:
-            obs: list
+            obs: list (corresponding to the tuple from get_observation_space)
             rew: scalar
-            done: bool
+            terminated: bool
             info: dict
 
         Note: Do NOT put the action buffer in obs (automated).
         """
-        # return obs, rew, done, info
+        # return obs, rew, terminated, info
 
         raise NotImplementedError
 
@@ -131,7 +134,7 @@ DEFAULT_CONFIG_DICT = {
     # start_obs_capture should be the same as "time_step_duration" unless observation capture is non-instantaneous and
     # smaller than one time-step, and you want to capture it directly in your interface for convenience. Otherwise,
     # you need to perform observation capture in a parallel process and simply retrieve the last available observation
-    # in the get_obs_rew_done_info() and reset() methods of your interface
+    # in the get_obs_rew_terminated_info() and reset() methods of your interface
     "time_step_timeout_factor": 1.0,  # maximum elasticity in (fraction or number of) time-steps
     "ep_max_length": np.inf,  # maximum episode length
     "real_time": True,  # True unless you want to revert to the usual turn-based RL setting (not tested yet)
@@ -141,7 +144,7 @@ DEFAULT_CONFIG_DICT = {
     "reset_act_buf": True,  # When True, the action buffer will be filled with default actions at reset
     "benchmark": False,  # When True, a simple benchmark will be run to estimate useful timing metrics
     "benchmark_polyak": 0.1,  # Polyak averaging factor for the benchmarks (0.0 < x <= 1); smaller is slower, bigger is noisier
-    "wait_on_done": False,  # Whether the wait() method should be called when done is True
+    "wait_on_done": False,  # Whether the wait() method should be called when either terminated or truncated is True
 }
 """Default configuration dictionary of Real-Time Gym.
 
@@ -318,7 +321,8 @@ class RealTimeEnv(Env):
         self.__o_lock = Lock()  # lock to retrieve observations asynchronously, acquire to access the following:
         self.__obs = None
         self.__rew = None
-        self.__done = None
+        self.__terminated = None
+        self.__truncated = None
         self.__info = None
         self.__o_set_flag = False
 
@@ -338,6 +342,10 @@ class RealTimeEnv(Env):
         # state variables:
         self.default_action = self.interface.get_default_action()
         self.last_action = self.default_action
+
+        # gym variables:
+        self.seed = None
+        self.options = None
 
     def _update_timestamps(self):
         """This is called at the beginning of each time-step.
@@ -420,57 +428,63 @@ class RealTimeEnv(Env):
             time.sleep(self.__t_co - now)
         if self.benchmark:
             self.bench.start_retrieve_obs_time()
-        self.__update_obs_rew_done()  # capture observation
+        self.__update_obs_rew_terminated_truncated()  # capture observation
         if self.benchmark:
             self.bench.end_retrieve_obs_time()
         now = time.time()
         if now < self.__t_end:  # wait until the end of the time-step
             time.sleep(self.__t_end - now)
 
-    def __update_obs_rew_done(self):
+    def __update_obs_rew_terminated_truncated(self):
         """Captures o, r, d asynchronously.
 
         Returns:
             observation of this step()
         """
         self.__o_lock.acquire()
-        o, r, d, i = self.interface.get_obs_rew_done_info()
-        if not d:
-            d = (self.current_step >= self.ep_max_length)
+        o, r, d, i = self.interface.get_obs_rew_terminated_info()
+        t = (self.current_step >= self.ep_max_length) if not d else False
         elt = o
         if self.obs_prepro_func:
             elt = self.obs_prepro_func(elt)
         elt = tuple(elt)
-        self.__obs, self.__rew, self.__done, self.__info = elt, r, d, i
+        self.__obs, self.__rew, self.__terminated, self.__truncated, self.__info = elt, r, d, t, i
         self.__o_set_flag = True
         self.__o_lock.release()
 
-    def _retrieve_obs_rew_done_info(self):
+    def _retrieve_obs_rew_terminated_truncated_info(self):
         """Waits for new available o r d i and retrieves them.
         """
         c = True
         while c:
             self.__o_lock.acquire()
             if self.__o_set_flag:
-                elt, r, d, i = self.__obs, self.__rew, self.__done, self.__info
+                elt, r, d, t, i = self.__obs, self.__rew, self.__terminated, self.__truncated, self.__info
                 self.__o_set_flag = False
                 c = False
             self.__o_lock.release()
         if self.act_in_obs:
             elt = tuple((*elt, *tuple(self.act_buf),))
-        return elt, r, d, i
+        return elt, r, d, t, i
 
     def init_action_buffer(self):
         for _ in range(self.act_buf_len):
             self.act_buf.append(self.default_action)
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         """Resets the environment.
+
+        Args:
+            seed: placeholder
+            options: placeholder
 
         Returns:
             obs
+            info
         """
         self._join_thread()
+        self.seed = seed
+        self.options = options
         if not self.initialized:
             self._initialize()
         self.current_step = 0
@@ -478,7 +492,7 @@ class RealTimeEnv(Env):
             self.init_action_buffer()
         else:
             self.act_buf.append(self.default_action)
-        elt = self.interface.reset()
+        elt, info = self.interface.reset()
         if self.act_in_obs:
             elt = elt + list(self.act_buf)
         if self.obs_prepro_func:
@@ -486,7 +500,7 @@ class RealTimeEnv(Env):
         elt = tuple(elt)
         if self.real_time:
             self._run_time_step(self.default_action)
-        return elt
+        return elt, info
 
     def step(self, action):
         """Performs an environment step.
@@ -495,7 +509,7 @@ class RealTimeEnv(Env):
             action: numpy.array: control value
 
         Returns:
-            obs, rew, done, info
+            obs, rew, terminated, truncated, info
 
         CAUTION: this is REAL-TIME.
         If you want to "pause" the environment at some point, use the wait() method.
@@ -507,14 +521,14 @@ class RealTimeEnv(Env):
         self.act_buf.append(action)
         if not self.real_time:
             self._run_time_step(action)
-        obs, rew, done, info = self._retrieve_obs_rew_done_info()
+        obs, rew, terminated, truncated, info = self._retrieve_obs_rew_terminated_truncated_info()
         if self.real_time:
             self._run_time_step(action)
-        if done and self.wait_on_done:
+        if (terminated or truncated) and self.wait_on_done:
             self.wait()
         if self.benchmark:
             self.bench.end_step_time()
-        return obs, rew, done, info
+        return obs, rew, terminated, truncated, info
 
     def stop(self):
         self._join_thread()

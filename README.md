@@ -47,10 +47,10 @@ my_config['interface'] = MyCustomInterface
 
 env = gym.make("real-time-gym-v0", my_config, disable_env_checker=True)
 
-obs = env.reset()
+obs, info = env.reset()
 while True:  # when this loop is broken, the current time-step will timeout
 	act = model(obs)  # inference takes a random amount of time
-	obs = env.step(act)  # the step function transparently adapts to this duration
+	obs, rew, terminated, truncated, info = env.step(act)  # the step function transparently adapts to this duration
 ```
 
 You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
@@ -61,7 +61,7 @@ This method defines the core mechanism of Real-Time Gym environments:
 Time-steps are being elastically constrained to their nominal duration. When this elastic constraint cannot be satisfied, the previous time-step times out and the new time-step starts from the current timestamp.
 This happens either because the environment has been 'paused', or because the system is ill-designed:
 - The inference duration of the model, i.e. the elapsed duration between two calls of the step() function, may be too long for the time-step duration that the user is trying to use.
-- The procedure that retrieves observations may take too much time or may be called too late (the latter can be tweaked in the configuration dictionary). Remember that, if observation capture is too long, it must not be part of the get_obs_rew_done_info() method of your interface. Instead, this method must simply retrieve the latest available observation from another process, and the action buffer must be long enough to handle the observation capture duration. This is described in the Appendix of [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966).
+- The procedure that retrieves observations may take too much time or may be called too late (the latter can be tweaked in the configuration dictionary). Remember that, if observation capture is too long, it must not be part of the `get_obs_rew_terminated_info()` method of your interface. Instead, this method must simply retrieve the latest available observation from another process, and the action buffer must be long enough to handle the observation capture duration. This is described in the Appendix of [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966).
 
 
 ## Tutorial
@@ -98,7 +98,7 @@ from rtgym import RealTimeGymInterface
 
 The [RealTimeGymInterface](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L12) is all you need to implement in order to create your custom real-time Gym environment.
 
-This class has 6 abstract methods that you need to implement: ```get_observation_space```, ```get_action_space```, ```get_default_action```, ```reset```, ```get_obs_rew_done_info``` and ```send_control```.
+This class has 6 abstract methods that you need to implement: ```get_observation_space```, ```get_action_space```, ```get_default_action```, ```reset```, ```get_obs_rew_terminated_info``` and ```send_control```.
 It also has a ```wait``` and a ```render``` methods that you may want to override.
 We will implement them all to understand their respective roles.
 
@@ -220,7 +220,7 @@ class MyRealTimeInterface(RealTimeGymInterface):
     def reset(self):
         pass
 
-    def get_obs_rew_done_info(self):
+    def get_obs_rew_terminated_info(self):
         pass
 
     def wait(self):
@@ -307,7 +307,7 @@ Ok, in this case this is actually equivalent, but you get the idea. You may want
 
 ---
 The ```get_observation_space``` method outputs a ```gym.spaces.Tuple``` object.
-This object describes the structure of the observations returned from the ```reset``` and ```get_obs_rew_done_info``` methods of our interface.
+This object describes the structure of the observations returned from the ```reset``` and ```get_obs_rew_terminated_info``` methods of our interface.
  
 In our case, the observation will contain ```pos_x``` and ```pos_y```, which are both constrained between ```-1.0``` and ```1.0``` in our simple 2D world.
 It will also contain target coordinates ```tar_x``` and ```tar_y```, constrained between ```-0.5``` and ```0.5```.
@@ -325,8 +325,8 @@ def get_observation_space(self):
 ```
 
 ---
-We can now implement the RL mechanics of our environment (i.e. the reward function and whether we consider the task ```done``` in the episodic setting), and a procedure to retrieve observations from our dummy drone.
-This is done in the ```get_obs_rew_done_info``` method.
+We can now implement the RL mechanics of our environment (i.e. the reward function and whether we consider the task ```terminated``` in the episodic setting), and a procedure to retrieve observations from our dummy drone.
+This is done in the ```get_obs_rew_terminated_info``` method.
 
 For this tutorial, we will implement a simple task.
 
@@ -341,32 +341,41 @@ The task is easy, but not as straightforward as it looks.
 Indeed, the presence of random communication delays and the fact that the drone keeps moving in real time makes it difficult to precisely reach the target.
 
 ---
-```get_obs_rew_done_info``` outputs 4 values:
+```get_obs_rew_terminated_info``` outputs 4 values:
 - ```obs```: a list of all the components of the last retrieved observation, except for the action buffer
 - ```rew```: a float that is our reward
-- ```done```: a boolean that tells whether the episode is finished (always False in the non-episodic setting)
+- ```terminated```: a boolean that tells whether the episode is finished (always False in the non-episodic setting)
 - ```info```: a dictionary that contains any additional information you may want to provide
 
 For our simple task, the implementation is fairly straightforward.
-```obs``` contains the last available coordinates and the target, ```rew``` is the negative distance to the target, ```done``` is True when the target has been reached, and since we don't need more information ```info``` is empty:
+```obs``` contains the last available coordinates and the target, ```rew``` is the negative distance to the target, ```terminated``` is True when the target has been reached, and since we don't need more information ```info``` is empty:
+
 ```python
-def get_obs_rew_done_info(self):
+def get_obs_rew_terminated_info(self):
     pos_x, pos_y = self.rc_drone.get_observation()
     tar_x = self.target[0]
     tar_y = self.target[1]
-    obs = [pos_x, pos_y, tar_x, tar_y]
+    obs = [np.array([pos_x], dtype='float32'),
+           np.array([pos_y], dtype='float32'),
+           np.array([tar_x], dtype='float32'),
+           np.array([tar_y], dtype='float32')]
     rew = -np.linalg.norm(np.array([pos_x, pos_y], dtype=np.float32) - self.target)
-    done = rew > -0.01
+    terminated = rew > -0.01
     info = {}
-    return obs, rew, done, info
+    return obs, rew, terminated, info
 ```
 We did not implement the 100 time-steps limit here because this will be done later in the configuration dictionary.
+
+_Note: `obs` is a list although the observation space defined in `get_observation_space` must be a `gym.spaces.Tuple`.
+This is expected in `rtgym`.
+However, the inner components of this list must agree with the inner observation spaces of the tuple.
+Thus, our inner components are numpy arrays here, because we have defined inner observation spaces as corresponding `gym.spaces.Box` in `get_observation_space`._
 
 ---
 Finally, the last mandatory method that we need to implement is ```reset```, which will be called at the beginning of each new episode.
 This method is responsible for setting up a new episode in the episodic setting.
 In our case, it will randomly place a new target.
-```reset``` returns an initial observation ```obs``` that will be used to compute the first action.
+```reset``` returns an initial observation ```obs``` that will be used to compute the first action, and an ```info``` dictionary where we may store everything else.
 
 A good practice is to implement a mechanism that runs only once and instantiates everything that is heavy in ```reset``` instead of ```__init__```.
 This is because RL implementations will often create a dummy environment just to retrieve the action and observation spaces, and you don't want a drone flying just for that.
@@ -387,7 +396,10 @@ def reset(self):
     pos_x, pos_y = self.rc_drone.get_observation()
     self.target[0] = np.random.uniform(-0.5, 0.5)
     self.target[1] = np.random.uniform(-0.5, 0.5)
-    return [pos_x, pos_y, self.target[0], self.target[1]]
+    return [np.array([pos_x], dtype='float32'),
+            np.array([pos_y], dtype='float32'),
+            np.array([self.target[0]], dtype='float32'),
+            np.array([self.target[1]], dtype='float32')], {}
 ```
 
 We have now fully implemented our custom ```RealTimeGymInterface``` and can use it to instantiate a Gym environment for our real-time application.
@@ -420,8 +432,8 @@ The ```rtgym``` environment will ensure that the control frequency sticks to thi
 
 The ```"start_obs_capture"``` entry is usually the same as the ```"time_step_duration"``` entry.
 It defines the time at which an observation starts being retrieved, which should usually happen instantly at the end of the time-step.
-However, in some situations, you will want to actually capture an observation in ```get_obs_rew_done_info``` and the capture duration will not be negligible.
-In such situations, if observation capture is less than 1 time-step, you can do this and use ```"start_obs_capture"``` in order to tell the environment to call ```get_obs_rew_done_info``` before the end of the time-step.
+However, in some situations, you will want to actually capture an observation in ```get_obs_rew_terminated_info``` and the capture duration will not be negligible.
+In such situations, if observation capture is less than 1 time-step, you can do this and use ```"start_obs_capture"``` in order to tell the environment to call ```get_obs_rew_terminated_info``` before the end of the time-step.
 If observation capture is more than 1 time-step, it needs to be performed in a parallel process and the last available observation should be used at each time-step.
 
 In any case, keep in mind that when observation capture is not instantaneous, you should add its maximum duration to the maximum delay, and increase the size of the action buffer accordingly. See the [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966) appendix for more details.
@@ -435,7 +447,7 @@ This might happen after calls to reset() depending on how you implement the ```r
 However, if this happens repeatedly in other situations, it probably means that your inference time is too long for the time-step you are trying to use.
 
 The ```"ep_max_length"``` entry is the maximum length of an episode.
-When this number of time-steps have been performed since the last reset(), ```done``` will be ```True```.
+When this number of time-steps have been performed since the last reset(), ```truncated``` will be ```True```.
 In the non-episodic setting, set this to ```np.inf```.
 
 The ```"act_buf_len"``` entry is the size of the action buffer. In our case, we need it to contain the 4 last actions.
@@ -459,13 +471,13 @@ We can use it as any usual Gym environment:
 
 ```python
 def model(obs):
-    return np.array([obs[2] - obs[0], obs[3] - obs[1]], dtype=np.float32) * 20.0
+    return np.clip(np.concatenate((obs[2] - obs[0], obs[3] - obs[1])) * 20.0, -2.0, 2.0)
 
-done = False
-obs = env.reset()
-while not done:
+terminated, truncated = False, False
+obs, info = env.reset()
+while not (terminated or truncated):
     act = model(obs)
-    obs, rew, done, info = env.step(act)
+    obs, rew, terminated, truncated, info = env.step(act)
     print(f"rew:{rew}")
 ```
 
@@ -500,12 +512,12 @@ You can now visualize the environment on your screen:
 def model(obs):
     return np.array([obs[2] - obs[0], obs[3] - obs[1]], dtype=np.float32) * 20.0
 
-done = False
-obs = env.reset()
-while not done:
+terminated, truncated = False, False
+obs, info = env.reset()
+while not (terminated or truncated):
     env.render()
     act = model(obs)
-    obs, rew, done, info = env.step(act)
+    obs, rew, terminated, truncated, info = env.step(act)
     print(f"rew:{rew}")
 cv2.waitKey(0)
 ```
@@ -548,15 +560,15 @@ The output looks like this:
 
 ```console
 Environment benchmarks:
-{'inference_duration': (0.003926419229090126, 0.00014549072704012842),
- 'join_duration': (0.04428279383539383, 0.005076410880242647),
- 'retrieve_obs_duration': (0.0, 0.0),
- 'send_control_duration': (0.00047557685000546734, 0.0004940671210374551),
- 'step_duration': (0.044353588965807995, 0.00507181527372258),
- 'time_step_duration': (0.05009265612492255, 0.0007064833473411327)}
+{'inference_duration': (0.014090990135653982, 0.0012176857248554194),
+ 'join_duration': (0.03710293826222041, 0.006481136920225911),
+ 'retrieve_obs_duration': (8.012583396852672e-05, 0.0001397626015969312),
+ 'send_control_duration': (0.000634083523134701, 0.0005238185602401273),
+ 'step_duration': (0.037439853824566036, 0.006698605131647715),
+ 'time_step_duration': (0.051359845765767326, 0.006117140690528808)}
 ```
 
-Here, our model is overly simple and our inference duration is only `0.0039` seconds, with an average deviation of `0.00014` seconds.
+Here, our inference duration is `0.014` seconds, with an average deviation of `0.0012` seconds.
 
 Importantly, note that retrieving observations and sending controls is almost instantaneous because the drone's communication delays do not influence these operations.
 

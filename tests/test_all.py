@@ -15,9 +15,9 @@ class DummyInterface(RealTimeGymInterface):
         self.control = control
 
     def reset(self):
-        return [time.time(), self.control, self.control_time]
+        return [time.time(), self.control, self.control_time], {}
 
-    def get_obs_rew_done_info(self):
+    def get_obs_rew_terminated_info(self):
         return [time.time(), self.control, self.control_time], 0.0, False, {}
 
     def get_observation_space(self):
@@ -44,7 +44,7 @@ class TestEnv(unittest.TestCase):
     def test_timing(self):
         epsilon = 0.01
         env = gym.make("real-time-gym-v0", config=config)
-        obs1 = env.reset()
+        obs1, info = env.reset()
         elapsed_since_obs1_capture = time.time() - obs1[0]
         self.assertGreater(epsilon, elapsed_since_obs1_capture)
         self.assertGreater(elapsed_since_obs1_capture, - epsilon)
@@ -52,7 +52,7 @@ class TestEnv(unittest.TestCase):
         self.assertIs(obs1[1], None)
         self.assertIs(obs1[2], None)
         act = 0.0
-        obs2, _, _, _ = env.step(act)
+        obs2, _, _, _, _ = env.step(act)
         self.assertEqual(obs2[3], act)
         self.assertEqual(obs2[1], -1.0)
         self.assertGreater(obs2[2] - obs1[0], - epsilon)
@@ -62,7 +62,7 @@ class TestEnv(unittest.TestCase):
         for i in range(3):
             obs1 = obs2
             act = float(i + 1)
-            obs2, _, _, _ = env.step(act)
+            obs2, _, _, _, _ = env.step(act)
             self.assertEqual(obs2[3], act)
             self.assertEqual(obs2[1], act - 1.0)
             self.assertGreater(time.time() - obs2[2], 0.1 - epsilon)
