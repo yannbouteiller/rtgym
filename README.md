@@ -50,7 +50,7 @@ env = gym.make("real-time-gym-v0", my_config, disable_env_checker=True)
 obs, info = env.reset()
 while True:  # when this loop is broken, the current time-step will timeout
 	act = model(obs)  # inference takes a random amount of time
-	obs, rew, terminated, truncated, info = env.step(act)  # step transparently adapts to this duration
+	obs, rew, terminated, truncated, info = env.step(act)  # transparently adapts to this duration
 ```
 
 You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
