@@ -1,6 +1,6 @@
 """Real-Time Gym environment core.
 
-The final environment instantiated by gym.make is RealTimeEnv.
+The final environment instantiated by gymnasium.make is RealTimeEnv.
 The developer defines a custom implementation of the RealTimeGymInterface abstract class.
 Then, they create a config dictionary by copying DEFAULT_CONFIG_DICT.
 In this config, they replace the 'interface' entry with their custom RealTimeGymInterface.
@@ -10,8 +10,8 @@ Other entries define Real-Time Gym parameters, such as the nominal duration of t
 """
 
 
-from gym import Env
-import gym.spaces as spaces
+from gymnasium import Env
+import gymnasium.spaces as spaces
 import time
 from collections import deque
 from threading import Thread, Lock
@@ -46,8 +46,12 @@ class RealTimeGymInterface:
 
         raise NotImplementedError
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         """Resets the episode.
+
+        Args:
+            seed (optional): Gymnasium seed
+            options (optional): Gymnasium options
 
         Returns:
             obs: must be a list (corresponding to the tuple from get_observation_space)
@@ -87,7 +91,7 @@ class RealTimeGymInterface:
         """Returns the observation space.
 
         Returns:
-            observation_space: gym.spaces.Tuple
+            observation_space: gymnasium.spaces.Tuple
 
         Note: Do NOT put the action buffer here (automated).
         """
@@ -99,7 +103,7 @@ class RealTimeGymInterface:
         """Returns the action space.
 
         Returns:
-            action_space: gym.spaces.Box
+            action_space: gymnasium.spaces.Box
         """
         # return spaces.Box(...)
 
@@ -118,7 +122,7 @@ class RealTimeGymInterface:
     def render(self):
         """Renders the environment (optional).
 
-        Implement this if you want to use the render() method of the gym environment.
+        Implement this if you want to use the render() method of the gymnasium environment.
         """
         pass
 
@@ -148,13 +152,13 @@ DEFAULT_CONFIG_DICT = {
 }
 """Default configuration dictionary of Real-Time Gym.
 
-Copy this dictionary and pass it as argument to gym.make.
+Copy this dictionary and pass it as argument to gymnasium.make.
 
     Typical usage example:
 
     my_config = DEFAULT_CONFIG_DICT
     my_config["interface"] = MyRealTimeInterface
-    env = gym.make("real-time-gym-v0", config=my_config)
+    env = gymnasium.make("real-time-gym-v1", config=my_config)
 """
 
 
@@ -284,7 +288,7 @@ class Benchmark:
 
 class RealTimeEnv(Env):
     def __init__(self, config: dict=DEFAULT_CONFIG_DICT):
-        """Final class instantiated by gym.make.
+        """Final class instantiated by gymnasium.make.
 
         Args:
             config: a custom implementation of DEFAULT_CONFIG_DICT
@@ -343,7 +347,7 @@ class RealTimeEnv(Env):
         self.default_action = self.interface.get_default_action()
         self.last_action = self.default_action
 
-        # gym variables:
+        # gymnasium variables:
         self.seed = None
         self.options = None
 
@@ -475,8 +479,8 @@ class RealTimeEnv(Env):
         """Resets the environment.
 
         Args:
-            seed: placeholder
-            options: placeholder
+            seed (optional): seed passed to the reset() method of the rtgym interface
+            options (optional): seed passed to the reset() method of the rtgym interface
 
         Returns:
             obs

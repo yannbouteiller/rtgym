@@ -1,5 +1,5 @@
 # Real-Time Gym
-Easily implement your custom [OpenAI Gym](https://github.com/openai/gym#openai-gym) environments for real-time applications.
+Easily implement your custom [Gymnasium](https://gymnasium.farama.org) environments for real-time applications.
  
 Real-Time Gym (```rtgym```) is typically needed when trying to use Reinforcement Learning algorithms in robotics or real-time video games.
 Its purpose is to clock your Gym environments in a way that is transparent to the user.
@@ -25,7 +25,7 @@ pip install rtgym
 ````
 
 ## Real-time Gym framework
-Real-Time Gym (```rtgym```) is a simple and efficient real-time threaded framework built on top of [OpenAI Gym](https://github.com/openai/gym#openai-gym).
+Real-Time Gym (```rtgym```) is a simple and efficient real-time threaded framework built on top of [Gymnasium](https://gymnasium.farama.org).
 It is coded in python.
 
 ```rtgym``` enables real-time implementations of Delayed Markov Decision Processes in real-world applications.
@@ -45,7 +45,7 @@ from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
 my_config = DEFAULT_CONFIG_DICT
 my_config['interface'] = MyCustomInterface
 
-env = gym.make("real-time-gym-v0", my_config, disable_env_checker=True)
+env = gymnasium.make("real-time-gym-v1", my_config, disable_env_checker=True)
 
 obs, info = env.reset()
 while True:  # when this loop is broken, the current time-step will timeout
@@ -195,8 +195,8 @@ Note that this will be taken care of automatically, so you don't need to worry a
 Create a custom class that inherits the RealTimeGymInterface class:
 ```python
 from rtgym import RealTimeGymInterface, DummyRCDrone
-import gym.spaces as spaces
-import gym
+import gymnasium.spaces as spaces
+import gymnasium
 import numpy as np
 
 
@@ -217,7 +217,7 @@ class MyRealTimeInterface(RealTimeGymInterface):
     def send_control(self, control):
         pass
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         pass
 
     def get_obs_rew_terminated_info(self):
@@ -235,7 +235,7 @@ def __init__(self):
 ```
 
 ---
-The ```get_action_space``` method returns a ```gym.spaces.Box``` object.
+The ```get_action_space``` method returns a ```gymnasium.spaces.Box``` object.
 This object defines the shape and bounds of the ```control``` argument that will be passed to the ```send_control``` method.
 
 In our case, we have two actions: ```vel_x``` and ```vel_y```.
@@ -306,7 +306,7 @@ def wait(self):
 Ok, in this case this is actually equivalent, but you get the idea. You may want your drone to land when this function is called for example.
 
 ---
-The ```get_observation_space``` method outputs a ```gym.spaces.Tuple``` object.
+The ```get_observation_space``` method outputs a ```gymnasium.spaces.Tuple``` object.
 This object describes the structure of the observations returned from the ```reset``` and ```get_obs_rew_terminated_info``` methods of our interface.
  
 In our case, the observation will contain ```pos_x``` and ```pos_y```, which are both constrained between ```-1.0``` and ```1.0``` in our simple 2D world.
@@ -366,10 +366,10 @@ def get_obs_rew_terminated_info(self):
 ```
 We did not implement the 100 time-steps limit here because this will be done later in the configuration dictionary.
 
-_Note: `obs` is a list although the observation space defined in `get_observation_space` must be a `gym.spaces.Tuple`.
+_Note: `obs` is a list although the observation space defined in `get_observation_space` must be a `gymnasium.spaces.Tuple`.
 This is expected in `rtgym`.
 However, the inner components of this list must agree with the inner observation spaces of the tuple.
-Thus, our inner components are numpy arrays here, because we have defined inner observation spaces as corresponding `gym.spaces.Box` in `get_observation_space`._
+Thus, our inner components are numpy arrays here, because we have defined inner observation spaces as corresponding `gymnasium.spaces.Box` in `get_observation_space`._
 
 ---
 Finally, the last mandatory method that we need to implement is ```reset```, which will be called at the beginning of each new episode.
@@ -389,7 +389,7 @@ def __init__(self):
 ```
 And implement the ```reset``` method as follows:
 ```python
-def reset(self):
+def reset(self, seed=None, options=None):
     if not self.initialized:
         self.rc_drone = DummyRCDrone()
         self.initialized = True
@@ -403,7 +403,7 @@ def reset(self):
 ```
 
 We have now fully implemented our custom ```RealTimeGymInterface``` and can use it to instantiate a Gym environment for our real-time application.
-To do this, we simply pass our custom interface as a parameter to ```gym.make``` in a configuration dictionary, as illustrated in the next section.
+To do this, we simply pass our custom interface as a parameter to ```gymnasium.make``` in a configuration dictionary, as illustrated in the next section.
 
 ---
 #### Create a configuration dictionary
@@ -464,7 +464,7 @@ We are all done!
 Instantiating our Gym environment is now as simple as:
 
 ```python
-env = gym.make("real-time-gym-v0", config=my_config)
+env = gymnasium.make("real-time-gym-v1", config=my_config)
 ``` 
 
 We can use it as any usual Gym environment:

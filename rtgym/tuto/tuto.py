@@ -1,6 +1,6 @@
 from rtgym import RealTimeGymInterface, DEFAULT_CONFIG_DICT, DummyRCDrone
-import gym.spaces as spaces
-import gym
+import gymnasium.spaces as spaces
+import gymnasium
 import numpy as np
 import cv2
 
@@ -48,7 +48,7 @@ class MyRealTimeInterface(RealTimeGymInterface):
         vel_y = control[1]
         self.rc_drone.send_control(vel_x, vel_y)
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         if not self.initialized:
             self.rc_drone = DummyRCDrone()
             self.initialized = True
@@ -105,7 +105,7 @@ my_config["reset_act_buf"] = False
 my_config["benchmark"] = True
 my_config["benchmark_polyak"] = 0.2
 
-env = gym.make("real-time-gym-v0", config=my_config)
+env = gymnasium.make("real-time-gym-v1", config=my_config)
 
 obs_space = env.observation_space
 act_space = env.action_space
