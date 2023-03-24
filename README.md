@@ -78,7 +78,7 @@ The following figure illustrates how `rtgym` behaves around `reset` transitions 
 #### Note for advanced users:
 _In this configuration, the `"reset_act_buf"` entry of the configuration dictionary must be left to `True`, and arbitrary actions can be executed in the `wait` and `reset` implementation of your `RealTimeGymInterface`._
 
-_When the `"reset_act_buf"` entry is set to `False`, `"wait_on_done"` should be `False` and `reset` should not execute any action, otherwise the initial action buffer will be filled with invalid old actions, e.g., `a1`, instead of copies of the default action `a0`._
+_When the `"reset_act_buf"` entry is set to `False`, `"wait_on_done"` should be `False` and `reset` should not execute any action, otherwise the initial action buffer would not be valid anymore._
 
 _Setting `"reset_act_buf"` to `False` is useful when you do not want to break the flow of real-time operations around `reset` transitions.
 In such situations, `a1` would be executed until the end of `reset`, slightly overflowing on the next time step (where `a0` is applied), i.e., giving your `RealTimeGymInterface` a little less time to compute `a4` and capture `o4`._
