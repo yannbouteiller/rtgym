@@ -75,12 +75,30 @@ The following figure illustrates how `rtgym` behaves around `reset` transitions 
 
 ![Reset Transitions](https://github.com/yannbouteiller/rtgym/releases/download/v0.9/reset.png "Reset Transitions")
 
-_Note that, in this configuration, the `"reset_act_buf"` entry of the configuration dictionary must be left to `True`, and arbitrary actions can be executed in the `wait` and `reset` implementation of your `RealTimeGymInterface`._
+#### Note for advanced users:
+_In this configuration, the `"reset_act_buf"` entry of the configuration dictionary must be left to `True`, and arbitrary actions can be executed in the `wait` and `reset` implementation of your `RealTimeGymInterface`._
 
 _When the `"reset_act_buf"` entry is set to `False`, `"wait_on_done"` should be `False` and `reset` should not execute any action, otherwise the initial action buffer will be filled with invalid old actions, e.g., `a1`, instead of copies of the default action `a0`._
 
 _Setting `"reset_act_buf"` to `False` is useful when you do not want to break the flow of real-time operations around `reset` transitions.
 In such situations, `a1` would be executed until the end of `reset`, slightly overflowing on the next time step (where `a0` is applied), i.e., giving your `RealTimeGymInterface` a little less time to compute `a4` and capture `o4`._
+
+_In case you want `a2` to be executed instead of `a0`, you can replace the default action right before calling reset:_
+```python
+obs, info = env.reset()  # here, the default action will be applied
+while True:
+    act = model(obs)
+    obs, rew, terminated, truncated, info = env.step(act)
+    done = terminated or truncated
+    if done:
+        env.default_action = act
+        obs, info = env.reset()  # here, act will be applied
+```
+
+_In this code snippet, the action buffer contained in `obs` is the same after `step` and after the second `reset`.
+Otherwise, the last action in the buffer would be `act` after `step` and would be replaced by the default action in `reset`, as the last `act` would in fact never be applied (see `a2` in the previous figure, imagining that `a1` keeps being applied instead of arbitrary actions being applied by `wait` and `reset`, which should then be much shorter / near-instantaneous)._
+
+_It is worth thinking about this if you wish to replace the action buffer with, e.g., recurrent units of a neural network while artificially splitting a non-episodic problem into finite episodes._
 
 ## Tutorial
 This tutorial will teach you how to implement a Real-Time Gym environment for your custom application, using ```rtgym```.
