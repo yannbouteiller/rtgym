@@ -64,8 +64,23 @@ This happens either because the environment has been 'paused', or because the sy
 - The procedure that retrieves observations may take too much time or may be called too late (the latter can be tweaked in the configuration dictionary). Remember that, if observation capture is too long, it must not be part of the `get_obs_rew_terminated_info()` method of your interface. Instead, this method must simply retrieve the latest available observation from another process, and the action buffer must be long enough to handle the observation capture duration. This is described in the Appendix of [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966).
 
 A call to `reset()` starts the elastic `rtgym` clock.
-Once the clock is started, it can be stopped by a call to the `wait()` API, which enables the user to artificially "pause" the environment.
+Once the clock is started, it can be stopped via a call to the `wait()` API to artificially "pause" the environment.
 
+`reset()` captures an initial observation and sends the default action, because Real-Time MDPs require an action to be applied at all time.
+
+The following figure illustrates how `rtgym` behaves around `reset` transitions when:
+- the configuration dictionary has `"wait_on_done": True`
+- `wait` is customized to execute some arbitrary behavior
+- `env.default_action` is `a0`
+
+![Reset Transitions](https://github.com/yannbouteiller/rtgym/releases/download/v0.9/reset.png "Reset Transitions")`
+
+_Note that, in this configuration, the `"reset_act_buf"` entry of the configuration dictionary must be left to `True`, and arbitrary actions can be executed in the `wait` and `reset` implementation of your `RealTimeGymInterface`._
+
+_When the `"reset_act_buf"` entry is set to `False`, `"wait_on_done"` should be `False` and `reset` should not execute any action, otherwise the initial action buffer will be filled with invalid old actions, e.g., `a1`, instead of copies of the default action `a0`._
+
+_Setting `"reset_act_buf"` to `False` is useful when you do not want to break the flow of real-time operations around `reset` transitions.
+In such situations, `a1` would be executed until the end of `reset`, slightly overflowing on the next time step (where `a0` is applied), i.e., giving your `RealTimeGymInterface` a little less time to compute `a4` and capture `o4`._
 
 ## Tutorial
 This tutorial will teach you how to implement a Real-Time Gym environment for your custom application, using ```rtgym```.

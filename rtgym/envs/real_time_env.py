@@ -545,9 +545,10 @@ class RealTimeEnv(Env):
         if not self.real_time:
             self._run_time_step(action)
         obs, rew, terminated, truncated, info = self._retrieve_obs_rew_terminated_truncated_info()
-        if self.real_time:
+        done = (terminated or truncated)
+        if self.real_time and not done:
             self._run_time_step(action)
-        if (terminated or truncated) and self.wait_on_done:
+        if done and self.wait_on_done:
             self.wait()
         if self.benchmark:
             self.bench.end_step_time()
