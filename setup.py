@@ -7,14 +7,14 @@ with open("README.md", "r") as fh:
 
 setup(name='rtgym',
       packages=[package for package in find_packages()],
-      version='0.8',
+      version='0.9',
       license='MIT',
       description='Easily implement custom Gymnasium environments for real-time applications',
       long_description=long_description,
       long_description_content_type="text/markdown",
       author='Yann Bouteiller',
       url='https://github.com/yannbouteiller/rtgym',
-      download_url='https://github.com/yannbouteiller/rtgym/archive/refs/tags/v0.8.tar.gz',
+      download_url='https://github.com/yannbouteiller/rtgym/archive/refs/tags/v0.9.tar.gz',
       keywords=['gymnasium', 'real', 'time', 'custom', 'environment', 'reinforcement', 'learning', 'random', 'delays'],
       install_requires=['gymnasium', 'numpy'],
       classifiers=[

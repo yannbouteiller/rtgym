@@ -64,11 +64,13 @@ class RealTimeGymInterface:
         raise NotImplementedError
 
     def wait(self):
-        """The agent stays 'paused', waiting in position.
+        """The environment 'waits' for the next reset().
 
-        Non-blocking function
+        Implement this when you want to artificially 'pause' your environment after an episode.
+
+        CAUTION: If you implement this, make sure 'reset_act_buf' is True in your rtgym configuration dictionary.
         """
-        self.send_control(self.get_default_action())
+        pass
 
     def get_obs_rew_terminated_info(self):
         """Returns observation, reward, terminated and info from the device.
@@ -342,7 +344,7 @@ class RealTimeEnv(Env):
         self.action_space = self._get_action_space()
         self.observation_space = self._get_observation_space()
         self.current_step = 0
-        self.initialized = False
+        self.time_initialized = False
         # state variables:
         self.default_action = self.interface.get_default_action()
         self.last_action = self.default_action
@@ -350,6 +352,9 @@ class RealTimeEnv(Env):
         # gymnasium variables:
         self.seed = None
         self.options = None
+
+        # action buffer initialization:
+        self.init_action_buffer()
 
     def _update_timestamps(self):
         """This is called at the beginning of each time-step.
@@ -394,17 +399,14 @@ class RealTimeEnv(Env):
             self._at_thread = Thread(target=self.__send_act_get_obs_and_wait, args=args, kwargs=kwargs, daemon=True)
             self._at_thread.start()
 
-    def _initialize(self):
-        """This is called at first reset() for e.g. rllib compatibility.
-
-        All costly initializations should be performed here
-        This allows creating a dummy environment for retrieving action space and observation space without performing these initializations
-        """
-        self.init_action_buffer()
-        self.__t_start = time.time()  # beginning of the time-step
-        self.__t_co = time.time()  # time at which observation starts being captured during the time step
-        self.__t_end = time.time()  # end of the time-step
-        self.initialized = True
+    def _initialize_time(self):
+        """This is called at first reset()."""
+        now = time.time()
+        # fake a "previous" time step:
+        self.__t_start = now - self.time_step_duration
+        self.__t_co = self.__t_start + self.start_obs_capture
+        self.__t_end = self.__t_start + self.time_step_duration
+        self.time_initialized = True
 
     def _get_action_space(self):
         return self.interface.get_action_space()
@@ -478,32 +480,45 @@ class RealTimeEnv(Env):
     def reset(self, seed=None, options=None):
         """Resets the environment.
 
+        The reset() function has a special role in the Real-Time setting.
+        It applies an initial action, sine one action is applied at all time in real-time environments.
+        This initial action is the default_action of your environment.
+        You may or may not wish the rtgym elastic clock to keep running during reset transitions.
+
+        If you wish rtgym to break real-time constraints after an episode, you can either set 'wait_on_done' to True in
+        your config, or call the wait() method of your environment whenever terminated or truncated is True.
+        Customize the wait() function if you wish your environment to do something before you call reset().
+
+        If on the contrary you wish to keep the real-time constraints from one episode to the next, your reset()
+        interface implementation should capture an observation almost instantaneously. This is because your previous
+        action will keep being applied until your observation is captured.
+
         Args:
             seed (optional): seed passed to the reset() method of the rtgym interface
-            options (optional): seed passed to the reset() method of the rtgym interface
+            options (optional): option dictionary passed to the reset() method of the rtgym interface
 
         Returns:
-            obs
-            info
+            obs: first observation of the trajectory, including real-time action buffer
+            info: info dictionary
         """
         self._join_thread()
         self.seed = seed
         self.options = options
-        if not self.initialized:
-            self._initialize()
         self.current_step = 0
         if self.reset_act_buf:
             self.init_action_buffer()
         else:
             self.act_buf.append(self.default_action)
-        elt, info = self.interface.reset()
+        elt, info = self.interface.reset(seed=seed, options=options)
         if self.act_in_obs:
             elt = elt + list(self.act_buf)
         if self.obs_prepro_func:
             elt = self.obs_prepro_func(elt)
         elt = tuple(elt)
+        if not self.time_initialized:
+            self._initialize_time()
         if self.real_time:
-            self._run_time_step(self.default_action)
+            self._run_time_step(self.act_buf[-1])
         return elt, info
 
     def step(self, action):
@@ -515,7 +530,11 @@ class RealTimeEnv(Env):
         Returns:
             obs, rew, terminated, truncated, info
 
-        CAUTION: this is REAL-TIME.
+        CAUTION: this is a REAL-TIME step.
+        This means step() needs to be called before the end of each time step.
+        step() waits for the current time step to end, and returns the corresponding observation.
+        In turn, the action is applied during the next time step.
+
         If you want to "pause" the environment at some point, use the wait() method.
         """
         if self.benchmark:

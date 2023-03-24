@@ -74,7 +74,7 @@ class MyRealTimeInterface(RealTimeGymInterface):
         return obs, rew, terminated, info
 
     def wait(self):
-        self.send_control(self.get_default_action())
+        pass
 
     def render(self):
         image = np.ones((400, 400, 3), dtype=np.uint8) * 255

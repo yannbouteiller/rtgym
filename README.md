@@ -63,6 +63,9 @@ This happens either because the environment has been 'paused', or because the sy
 - The inference duration of the model, i.e. the elapsed duration between two calls of the step() function, may be too long for the time-step duration that the user is trying to use.
 - The procedure that retrieves observations may take too much time or may be called too late (the latter can be tweaked in the configuration dictionary). Remember that, if observation capture is too long, it must not be part of the `get_obs_rew_terminated_info()` method of your interface. Instead, this method must simply retrieve the latest available observation from another process, and the action buffer must be long enough to handle the observation capture duration. This is described in the Appendix of [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966).
 
+A call to `reset()` starts the elastic `rtgym` clock.
+Once the clock is started, it can be stopped by a call to the `wait()` API, which enables the user to artificially "pause" the environment.
+
 
 ## Tutorial
 This tutorial will teach you how to implement a Real-Time Gym environment for your custom application, using ```rtgym```.
@@ -250,7 +253,6 @@ def get_action_space(self):
 ```RealTimeGymInterface``` also requires a default action.
 This is to initialize the action buffer, and optionally to reinitialize it when the environment is reset.
 In addition, ```send_control``` is called with the default action as parameter when the Gym environment is reset.
-If the ```wait``` method is not overridden, it will also apply this default action when called.
 This default action is returned as a numpy array by the ```get_default_action``` method.
 Of course, the default action must be within the action space that we defined in ```get_action_space```.
 
@@ -293,17 +295,20 @@ However, this needs to be done repeatedly, otherwise step() will time-out.
 Yet, you may still want to artificially 'pause' the environment occasionally, e.g. because you collected a batch of samples, or because you want to pause the whole experiment.
 This is the role of the ```wait``` method.
 
-By default, its behavior is to send the default action:
-```python
-def wait(self):
-    self.send_control(self.get_default_action())
-```
-But you may want to override this behavior by redefining the method:
+By default, ```wait``` is a no-op, but you may want to override this behavior by redefining the method:
 ```python
 def wait(self):
     self.send_control(np.array([0.0, 0.0], dtype='float32'))
 ```
-Ok, in this case this is actually equivalent, but you get the idea. You may want your drone to land when this function is called for example.
+You may want your drone to land when this function is called for example.
+
+Note that you generally do not want to customize ```wait``` when ```"reset_act_buf"``` is ```True``` in the ```rtgym``` configuration dictionary.
+In this tutorial this will be the case, thus we keep the default behavior:
+
+```python
+def wait(self):
+    pass
+```
 
 ---
 The ```get_observation_space``` method outputs a ```gymnasium.spaces.Tuple``` object.
@@ -381,25 +386,27 @@ A good practice is to implement a mechanism that runs only once and instantiates
 This is because RL implementations will often create a dummy environment just to retrieve the action and observation spaces, and you don't want a drone flying just for that.
 
 Replace the ```__init__``` method by:
+
 ```python
 def __init__(self):
-    self.rc_drone = None
-    self.target = np.array([0.0, 0.0], dtype=np.float32)
-    self.initialized = False
+  self.rc_drone = None
+  self.target = np.array([0.0, 0.0], dtype=np.float32)
+  self.initialized = False
 ```
 And implement the ```reset``` method as follows:
+
 ```python
 def reset(self, seed=None, options=None):
-    if not self.initialized:
-        self.rc_drone = DummyRCDrone()
-        self.initialized = True
-    pos_x, pos_y = self.rc_drone.get_observation()
-    self.target[0] = np.random.uniform(-0.5, 0.5)
-    self.target[1] = np.random.uniform(-0.5, 0.5)
-    return [np.array([pos_x], dtype='float32'),
-            np.array([pos_y], dtype='float32'),
-            np.array([self.target[0]], dtype='float32'),
-            np.array([self.target[1]], dtype='float32')], {}
+  if not self.initialized:
+    self.rc_drone = DummyRCDrone()
+    self.initialized = True
+  pos_x, pos_y = self.rc_drone.get_observation()
+  self.target[0] = np.random.uniform(-0.5, 0.5)
+  self.target[1] = np.random.uniform(-0.5, 0.5)
+  return [np.array([pos_x], dtype='float32'),
+          np.array([pos_y], dtype='float32'),
+          np.array([self.target[0]], dtype='float32'),
+          np.array([self.target[1]], dtype='float32')], {}
 ```
 
 We have now fully implemented our custom ```RealTimeGymInterface``` and can use it to instantiate a Gym environment for our real-time application.
