@@ -73,7 +73,7 @@ The following figure illustrates how `rtgym` behaves around `reset` transitions 
 - `wait` is customized to execute some arbitrary behavior
 - `env.default_action` is `a0`
 
-![Reset Transitions](https://github.com/yannbouteiller/rtgym/releases/download/v0.9/reset.png "Reset Transitions")`
+![Reset Transitions](https://github.com/yannbouteiller/rtgym/releases/download/v0.9/reset.png "Reset Transitions")
 
 _Note that, in this configuration, the `"reset_act_buf"` entry of the configuration dictionary must be left to `True`, and arbitrary actions can be executed in the `wait` and `reset` implementation of your `RealTimeGymInterface`._
 
