@@ -63,10 +63,10 @@ This happens either because the environment has been 'paused', or because the sy
 - The inference duration of the model, i.e. the elapsed duration between two calls of the step() function, may be too long for the time-step duration that the user is trying to use.
 - The procedure that retrieves observations may take too much time or may be called too late (the latter can be tweaked in the configuration dictionary). Remember that, if observation capture is too long, it must not be part of the `get_obs_rew_terminated_info()` method of your interface. Instead, this method must simply retrieve the latest available observation from another process, and the action buffer must be long enough to handle the observation capture duration. This is described in the Appendix of [Reinforcement Learning with Random Delays](https://arxiv.org/abs/2010.02966).
 
+
 A call to `reset()` starts the elastic `rtgym` clock.
 Once the clock is started, it can be stopped via a call to the `wait()` API to artificially "pause" the environment.
-
-`reset()` captures an initial observation and sends the default action, because Real-Time MDPs require an action to be applied at all time.
+`reset()` captures an initial observation and sends the default action, since Real-Time MDPs require an action to be applied at all time.
 
 The following figure illustrates how `rtgym` behaves around `reset` transitions when:
 - the configuration dictionary has `"wait_on_done": True`

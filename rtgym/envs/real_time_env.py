@@ -469,8 +469,6 @@ class RealTimeEnv(Env):
                 self.__o_set_flag = False
                 c = False
             self.__o_lock.release()
-        if self.act_in_obs:
-            elt = tuple((*elt, *tuple(self.act_buf),))
         return elt, r, d, t, i
 
     def init_action_buffer(self):
@@ -506,9 +504,11 @@ class RealTimeEnv(Env):
         self.options = options
         self.current_step = 0
         if self.reset_act_buf:
+            # fill the action buffer with default actions:
             self.init_action_buffer()
         else:
-            self.act_buf.append(self.default_action)
+            # replace the last (non-applied) action from the previous episode by the action that is going to be applied:
+            self.act_buf[-1] = self.default_action
         elt, info = self.interface.reset(seed=seed, options=options)
         if self.act_in_obs:
             elt = elt + list(self.act_buf)
@@ -541,15 +541,17 @@ class RealTimeEnv(Env):
             self.bench.start_step_time()
         self._join_thread()
         self.current_step += 1
-        self.act_buf.append(action)
+        self.act_buf.append(action)  # the action is always appended to the buffer
         if not self.real_time:
             self._run_time_step(action)
         obs, rew, terminated, truncated, info = self._retrieve_obs_rew_terminated_truncated_info()
         done = (terminated or truncated)
-        if self.real_time and not done:
+        if not done:  # apply action only when not done
             self._run_time_step(action)
-        if done and self.wait_on_done:
+        elif self.wait_on_done:
             self.wait()
+        if self.act_in_obs:
+            obs = tuple((*obs, *tuple(self.act_buf),))
         if self.benchmark:
             self.bench.end_step_time()
         return obs, rew, terminated, truncated, info

@@ -27,7 +27,8 @@ class DummyInterface(RealTimeGymInterface):
         obs = [np.array([time.time()], dtype=np.float64),
                np.array(self.control, dtype=np.float64),
                np.array([self.control_time], dtype=np.float64)]
-        return obs, 0.0, False, {}
+        terminated = (self.control >= 9).item()
+        return obs, 0.0, terminated, {}
 
     def get_observation_space(self):
         ob = gymnasium.spaces.Box(low=-np.inf, high=np.inf, shape=(1, ), dtype=np.float64)
@@ -47,6 +48,8 @@ config["interface"] = DummyInterface
 config["time_step_duration"] = 0.1
 config["start_obs_capture"] = 0.1
 config["act_buf_len"] = 1
+config["wait_on_done"] = False
+config["reset_act_buf"] = False
 
 
 class TestEnv(unittest.TestCase):
@@ -82,7 +85,7 @@ class TestEnv(unittest.TestCase):
         for i in range(10):
             obs1 = obs2
             act = np.array([float(i + 1)])
-            obs2, _, _, _, _ = env.step(act)
+            obs2, _, terminated, _, _ = env.step(act)
             now = time.time()
             self.assertEqual(obs2[3], act)
             self.assertEqual(obs2[1], act - 1.0)
@@ -93,6 +96,22 @@ class TestEnv(unittest.TestCase):
             # elapsed between new obs capture and previous obs capture:
             self.assertGreater(obs2[0] - obs1[0], 0.1 - epsilon)
             self.assertGreater(0.1 + epsilon, obs2[0] - obs1[0])
+
+            # terminated signal:
+            if i >= 9:
+                self.assertTrue(terminated)
+
+        # test reset:
+        obs1, info = env.reset()
+
+        # default action (buffer):
+        self.assertEqual(obs1[3], -1)
+
+        act = np.array([float(22)])
+        obs1, _, _, _, _ = env.step(act)
+
+        # new action (buffer):
+        self.assertEqual(obs1[3], 22)
 
 
 if __name__ == '__main__':
