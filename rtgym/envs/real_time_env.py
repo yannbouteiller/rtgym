@@ -591,7 +591,7 @@ class RealTimeEnv(Env):
         Args:
             mode: not used
             join_thread: set this to True if your render method performs unsafe operations.
-                The render method of your interface is called outside of the Real-Time Gym thread.
+                The render method of your interface is called outside the Real-Time Gym thread.
                 Caution: when join_thread is True, render() is not compatible with benchmarks().
         """
         if join_thread:
