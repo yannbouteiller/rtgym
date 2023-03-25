@@ -547,9 +547,10 @@ class RealTimeEnv(Env):
         self.act_buf.append(action)  # the action is always appended to the buffer
         if not self.real_time:
             self._run_time_step(action)
-        if not self.running:
+        if self.running:
+            obs, rew, terminated, info = self._retrieve_obs_rew_terminated_info()
+        else:
             raise RuntimeError("The episode is terminated or truncated. Call reset before step.")
-        obs, rew, terminated, info = self._retrieve_obs_rew_terminated_info()
         truncated = (self.current_step >= self.ep_max_length) if not terminated else False
         done = (terminated or truncated)
         if not done:  # apply action only when not done
