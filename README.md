@@ -35,7 +35,7 @@ It provides a minimal abstract python interface that the user simply customizes 
 Custom interfaces must inherit the [RealTimeGymInterface](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L12) class and implement all its abstract methods.
 Non-abstract methods can be overidden if desired.
 
-Then, copy the ```rtgym``` default [configuration dictionary](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L96) in your code and replace the ``` 'interface' ``` entry with the class of your custom interface. You probably also want to modify other entries in this dictionary depending on your application.
+Then, copy the ```rtgym``` default [configuration dictionary](https://github.com/yannbouteiller/rtgym/blob/97cfa9834d6ba7d95e18048c12ffc3aaf43456a7/rtgym/envs/real_time_env.py#L134) in your code and replace the ``` 'interface' ``` entry with the class of your custom interface. You probably also want to modify other entries in this dictionary depending on your application.
 
 Once the custom interface is implemented, ```rtgym``` uses it to instantiate a fully-fledged Gymnasium environment that automatically deals with time constraints.
 This environment can be used by simply following the usual Gymnasium pattern, therefore compatible with many implemented Reinforcement Learning (RL) algorithms:
