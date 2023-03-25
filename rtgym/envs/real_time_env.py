@@ -151,6 +151,7 @@ DEFAULT_CONFIG_DICT = {
     "benchmark": False,  # When True, a simple benchmark will be run to estimate useful timing metrics
     "benchmark_polyak": 0.1,  # Polyak averaging factor for the benchmarks (0.0 < x <= 1); smaller is slower, bigger is noisier
     "wait_on_done": False,  # Whether the wait() method should be called when either terminated or truncated is True
+    "last_act_on_reset": False,  # When False, reset() sends the default action; when False, it sends the last action
 }
 """Default configuration dictionary of Real-Time Gym.
 
@@ -304,9 +305,10 @@ class RealTimeEnv(Env):
 
         # config variables:
         self.wait_on_done = config["wait_on_done"] if "wait_on_done" in config else False
+        self.last_act_on_reset = config["last_act_on_reset"] if "last_act_on_reset" in config else False
         self.act_prepro_func: callable = config["act_prepro_func"] if "act_prepro_func" in config else None
         self.obs_prepro_func = config["obs_prepro_func"] if "obs_prepro_func" in config else None
-        self.ep_max_length = config["ep_max_length"]
+        self.ep_max_length = config["ep_max_length"] - 1
 
         self.time_step_duration = config["time_step_duration"] if "time_step_duration" in config else 0.0
         self.time_step_timeout_factor = config["time_step_timeout_factor"] if "time_step_timeout_factor" in config else 1.0
@@ -345,9 +347,10 @@ class RealTimeEnv(Env):
         self.observation_space = self._get_observation_space()
         self.current_step = 0
         self.time_initialized = False
+        self.running = False
+
         # state variables:
         self.default_action = self.interface.get_default_action()
-        self.last_action = self.default_action
 
         # gymnasium variables:
         self.seed = None
@@ -500,6 +503,7 @@ class RealTimeEnv(Env):
             info: info dictionary
         """
         self._join_thread()
+        self.running = True
         self.seed = seed
         self.options = options
         self.current_step = 0
@@ -508,7 +512,8 @@ class RealTimeEnv(Env):
             self.init_action_buffer()
         else:
             # replace the last (non-applied) action from the previous episode by the action that is going to be applied:
-            self.act_buf[-1] = self.default_action
+            if not self.last_act_on_reset:
+                self.act_buf[-1] = self.default_action
         elt, info = self.interface.reset(seed=seed, options=options)
         if self.act_in_obs:
             elt = elt + list(self.act_buf)
@@ -544,12 +549,16 @@ class RealTimeEnv(Env):
         self.act_buf.append(action)  # the action is always appended to the buffer
         if not self.real_time:
             self._run_time_step(action)
+        if not self.running:
+            raise RuntimeError("The episode is terminated or truncated. Call reset before step.")
         obs, rew, terminated, truncated, info = self._retrieve_obs_rew_terminated_truncated_info()
         done = (terminated or truncated)
         if not done:  # apply action only when not done
             self._run_time_step(action)
-        elif self.wait_on_done:
-            self.wait()
+        else:
+            self.running = False
+            if self.wait_on_done:
+                self.wait()
         if self.act_in_obs:
             obs = tuple((*obs, *tuple(self.act_buf),))
         if self.benchmark:
@@ -589,3 +598,19 @@ class RealTimeEnv(Env):
         if join_thread:
             self._join_thread()
         self.interface.render()
+
+    def set_default_action(self, default_action):
+        """Changes the default action.
+
+        Use this method right before calling reset() if you want the environment to send another default_action.
+        This is useful when you want to maintain the real-time flow around the end of an episode.
+        For instance, you may want to call set_default_action() with default_action as the action sent to step() right
+        before the episode got terminated or truncated, because this action was never applied (thus, it will be applied
+        by reset() - note however that this last action can be random unless you take special care).
+
+        Note: alternatively, you can set the "last_act_on_reset" entry to True in the rtgym configuration.
+
+        Args:
+            default_action: numpy.array: new default action (make sure it complies with the action space)
+        """
+        self.default_action = default_action

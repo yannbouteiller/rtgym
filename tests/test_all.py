@@ -17,7 +17,7 @@ class DummyInterface(RealTimeGymInterface):
     def reset(self, seed=None, options=None):
         now = time.time()
         self.control_time = now
-        self.control = [0.0]
+        self.control = [-2.0]
         obs = [np.array([now], dtype=np.float64),
                np.array(self.control, dtype=np.float64),
                np.array([self.control_time], dtype=np.float64)]
@@ -43,75 +43,245 @@ class DummyInterface(RealTimeGymInterface):
         return np.array([-1.0], dtype=np.float64)
 
 
-config = DEFAULT_CONFIG_DICT
-config["interface"] = DummyInterface
-config["time_step_duration"] = 0.1
-config["start_obs_capture"] = 0.1
-config["act_buf_len"] = 1
-config["wait_on_done"] = False
-config["reset_act_buf"] = False
-
-
 class TestEnv(unittest.TestCase):
     def test_timing(self):
+
         epsilon = 0.02
+        act_buf_len = 3
+        time_step_duration = 0.1
+        start_obs_capture = 0.08
+
+        print("--- new environment ---")
+
+        config = DEFAULT_CONFIG_DICT
+        config["interface"] = DummyInterface
+        config["time_step_duration"] = time_step_duration
+        config["start_obs_capture"] = start_obs_capture
+        config["act_buf_len"] = act_buf_len
+        config["wait_on_done"] = False
+        config["reset_act_buf"] = False
+        config["ep_max_length"] = 10
+        config["last_act_on_reset"] = True
+
         env = gymnasium.make("real-time-gym-v1", config=config)
 
+        # first reset, the default action (-1) will be sent:
         obs1, info = env.reset()
-        elapsed_since_obs1_capture = time.time() - obs1[0]
-        self.assertGreater(epsilon, elapsed_since_obs1_capture)
 
-        # default action (buffer):
-        self.assertEqual(obs1[3], -1)
+        # now, action -1 is on its way
 
-        # arbitrary value:
-        self.assertEqual(obs1[1], np.array([0.]))
-
-        # elapsed between now and control time:
+        # what is the difference between now and the moment reset was called?
         now = time.time()
-        self.assertGreater(0.1 + epsilon, now - obs1[0])
+        elapsed_since_reset = now - obs1[0]
+        print(f"Call to reset took {elapsed_since_reset} seconds")
+        self.assertGreater(epsilon, elapsed_since_reset)
 
-        act = np.array([0.0], dtype=np.float64)
-        obs2, _, _, _, _ = env.step(act)
-        self.assertEqual(obs2[3], act)
-        self.assertEqual(obs2[1], -1.0)
+        # the actions in the buffer should all be the default (-1):
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs1[3 + j]} at index {j}")
+            self.assertEqual(obs1[3 + j], -1)
 
-        # elapsed between beginning of new timestep and previous obs capture:
-        self.assertGreater(0.1 + epsilon, obs2[2] - obs1[0])
+        # the first control is -2 at reset:
+        print(f"The control is {obs1[1]}")
+        self.assertEqual(obs1[1], np.array([-2.]))
 
-        # elapsed between new obs capture and previous obs capture:
-        self.assertGreater(0.1 + epsilon, obs2[0] - obs1[0])
+        # now let us step the environment
+        a = 1
+        print(f"--- Step {a} ---")
+        act = np.array([float(a)], dtype=np.float64)
+        obs2, _, terminated, truncated, _ = env.step(act)
+        now = time.time()
+        print(f"terminated: {terminated}, truncated:{truncated}")
+
+        # let us look at the action buffer:
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs2[3 + j]} at index {j}")
+            if j < act_buf_len - 1:
+                self.assertEqual(obs2[3 + j], -1)
+            else:
+                self.assertEqual(obs2[3 + j], a)
+
+        # Now, we look at the time elapsed between the observation retrieval of step and reset:
+        elapsed = obs2[0] - obs1[0]
+        print(f"The two last obs are spaced by {elapsed} seconds")
+        self.assertGreater(time_step_duration + epsilon, elapsed)
+        self.assertGreater(elapsed, start_obs_capture - epsilon)
+
+        # the control applied when obs2 was captured should be the default -1
+        print(f"The action applied when obs was captured was {obs2[1]}")
+        self.assertEqual(obs2[1], np.array([-1.]))
+
+        # the sending timestamp of the control should be the beginning of the last time-step:
+        elapsed = now - obs2[2]
+        print(f"This action was sent {elapsed} seconds ago")
+        self.assertGreater(time_step_duration + epsilon, elapsed)
+        self.assertGreater(elapsed, time_step_duration - epsilon)
+
+        for i in range(9):
+
+            obs1 = obs2
+            a += 1
+
+            print(f"--- Step {a} ---")
+            act = np.array([float(a)], dtype=np.float64)
+            obs2, _, terminated, truncated, _ = env.step(act)
+            now = time.time()
+            print(f"terminated: {terminated}, truncated:{truncated}")
+
+            # let us look at the action buffer:
+            for j in range(act_buf_len):
+                print(f"The action buffer is {obs2[3 + j]} at index {j}")
+            self.assertEqual(obs2[-1], a)
+
+            # Now, we look at the time elapsed between the two observations:
+            elapsed = obs2[0] - obs1[0]
+            print(f"The two last obs are spaced by {elapsed} seconds")
+            self.assertGreater(time_step_duration + epsilon, elapsed)
+            self.assertGreater(elapsed, time_step_duration - epsilon)
+
+            # the control applied when obs2 was captured should be the previous a
+            print(f"The action applied when obs was captured was {obs2[1]}")
+            self.assertEqual(obs2[1], np.array([float(a - 1)]))
+
+            # the sending timestamp of the control should be the beginning of the last time-step:
+            elapsed = now - obs2[2]
+            print(f"This action was sent {elapsed} seconds ago")
+            self.assertGreater(time_step_duration + epsilon, elapsed)
+            self.assertGreater(elapsed, time_step_duration - epsilon)
+
+            # end of episode:
+            if i == 8:
+                # the terminated signal should override the truncated signal:
+                self.assertTrue(terminated)
+                self.assertFalse(truncated)
+
+        # let us test the real-time reset mechanism:
+        print("--- reset ---")
+        obs1, info = env.reset()
+        now = time.time()
+
+        # this call to reset should be near-instantaneous:
+        elapsed_since_reset = now - obs1[0]
+        print(f"Call to reset took {elapsed_since_reset} seconds")
+        self.assertGreater(epsilon, elapsed_since_reset)
+
+        # let us look at the action buffer:
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs1[3 + j]} at index {j}")
+        # since we use "last_act_on_reset":True, the buffer should end with act:
+        self.assertEqual(obs1[-1], act)
+
+        # Now let us step the environment:
+
+        a = 0
+        act = np.array([float(a)], dtype=np.float64)
+        obs1, _, terminated, truncated, _ = env.step(act)
+
+        # because we sent the previous act (10) on reset(), terminated should now be True:
+        print(f"terminated: {terminated}, truncated:{truncated}")
+        self.assertEqual(terminated, True)
+        self.assertEqual(truncated, False)
+
+        # Let us retry:
+
+        print("--- reset ---")
+        obs1, info = env.reset()
 
         for i in range(10):
-            obs1 = obs2
-            act = np.array([float(i + 1)])
-            obs2, _, terminated, _, _ = env.step(act)
-            now = time.time()
-            self.assertEqual(obs2[3], act)
-            self.assertEqual(obs2[1], act - 1.0)
+            print(f"--- step {i + 1} ---")
+            obs1, _, terminated, truncated, _ = env.step(act)
+            print(f"terminated: {terminated}, truncated:{truncated}")
+            if i < 9:
+                # reset() sent 0, so we should be good:
+                self.assertEqual(terminated, False)
+                self.assertEqual(truncated, False)
+            else:
+                # the episode should now be truncated:
+                self.assertEqual(terminated, False)
+                self.assertEqual(truncated, True)
 
-            # elapsed between now and start of last timestep:
-            self.assertGreater(0.1 + epsilon, now - obs2[2])
+        # Now the episode is truncated, we should not be able to call step again:
 
-            # elapsed between new obs capture and previous obs capture:
-            self.assertGreater(obs2[0] - obs1[0], 0.1 - epsilon)
-            self.assertGreater(0.1 + epsilon, obs2[0] - obs1[0])
+        try:
+            obs1, _, terminated, truncated, _ = env.step(act)
+            assert False, "step did not raise a RuntimeError"
+        except RuntimeError:
+            print("step cannot be called here.")
 
-            # terminated signal:
-            if i >= 9:
-                self.assertTrue(terminated)
+        # Now let us test the default reset behavior:
 
-        # test reset:
+        print("--- new environment ---")
+
+        config = DEFAULT_CONFIG_DICT
+        config["interface"] = DummyInterface
+        config["time_step_duration"] = time_step_duration
+        config["start_obs_capture"] = start_obs_capture
+        config["act_buf_len"] = act_buf_len
+        config["wait_on_done"] = True
+        config["reset_act_buf"] = True
+        config["ep_max_length"] = 10
+        config["last_act_on_reset"] = False
+
+        env = gymnasium.make("real-time-gym-v1", config=config)
+
+        # reset, the default action (-1) will be sent:
         obs1, info = env.reset()
 
-        # default action (buffer):
-        self.assertEqual(obs1[3], -1)
+        # the actions in the buffer should all be the default (-1):
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs1[3 + j]} at index {j}")
+            self.assertEqual(obs1[3 + j], -1)
 
-        act = np.array([float(22)])
-        obs1, _, _, _, _ = env.step(act)
+        # the first control is -2 at reset:
+        print(f"The control is {obs1[1]}")
+        self.assertEqual(obs1[1], np.array([-2.]))
 
-        # new action (buffer):
-        self.assertEqual(obs1[3], 22)
+        # let us step:
+        print("--- step ---")
+        obs1, _, terminated, truncated, _ = env.step(act)
+
+        # let us look at the action buffer:
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs1[3 + j]} at index {j}")
+        # the buffer should end with act:
+        self.assertEqual(obs1[-1], act)
+
+        # let us step again:
+        print("--- step ---")
+        obs1, _, terminated, truncated, _ = env.step(act)
+
+        # let us look at the action buffer:
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs1[3 + j]} at index {j}")
+        # the buffer should still end with act:
+        self.assertEqual(obs1[-1], act)
+
+        # not let us reset again:
+        print("--- reset ---")
+        obs1, info = env.reset()
+
+        # the actions in the buffer should now all be the default (-1):
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs1[3 + j]} at index {j}")
+            self.assertEqual(obs1[3 + j], -1)
+
+        # and the first control is -2 at reset:
+        print(f"The control is {obs1[1]}")
+        self.assertEqual(obs1[1], np.array([-2.]))
+
+        # for good measure, let us step one last time:
+
+        print("--- step ---")
+        obs1, _, terminated, truncated, _ = env.step(act)
+
+        # the last actions in the buffer should be act:
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs1[3 + j]} at index {j}")
+        self.assertEqual(obs1[-1], -act)
+
+        # the applied control should be -1:
+        print(f"The action applied when obs was captured was {obs1[1]}")
+        self.assertEqual(obs1[1], np.array([-1.]))
 
 
 if __name__ == '__main__':

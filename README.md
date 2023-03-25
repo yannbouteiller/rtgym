@@ -2,7 +2,7 @@
 Easily implement your custom [Gymnasium](https://gymnasium.farama.org) environments for real-time applications.
  
 Real-Time Gym (```rtgym```) is typically needed when trying to use Reinforcement Learning algorithms in robotics or real-time video games.
-Its purpose is to clock your Gym environments in a way that is transparent to the user.
+Its purpose is to clock your Gymnasium environments in a way that is transparent to the user.
 
 ## Quick links
 - [Installation](#installation)
@@ -37,8 +37,8 @@ Non-abstract methods can be overidden if desired.
 
 Then, copy the ```rtgym``` default [configuration dictionary](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L96) in your code and replace the ``` 'interface' ``` entry with the class of your custom interface. You probably also want to modify other entries in this dictionary depending on your application.
 
-Once the custom interface is implemented, ```rtgym``` uses it to instantiate a fully-fledged Gym environment that automatically deals with time constraints.
-This environment can be used by simply following the usual Gym pattern, therefore compatible with many implemented Reinforcement Learning (RL) algorithms:
+Once the custom interface is implemented, ```rtgym``` uses it to instantiate a fully-fledged Gymnasium environment that automatically deals with time constraints.
+This environment can be used by simply following the usual Gymnasium pattern, therefore compatible with many implemented Reinforcement Learning (RL) algorithms:
 
 ```python
 from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
@@ -71,7 +71,7 @@ Once the clock is started, it can be stopped via a call to the `wait()` API to a
 The following figure illustrates how `rtgym` behaves around `reset` transitions when:
 - the configuration dictionary has `"wait_on_done": True`
 - `wait` is customized to execute some arbitrary behavior
-- `env.default_action` is `a0`
+- The default action is `a0`
 
 ![Reset Transitions](https://github.com/yannbouteiller/rtgym/releases/download/v0.9/reset.png "Reset Transitions")
 
@@ -91,12 +91,13 @@ while True:
     obs, rew, terminated, truncated, info = env.step(act)
     done = terminated or truncated
     if done:
-        env.default_action = act
+        env.set_default_action(act)
         obs, info = env.reset()  # here, act will be applied
 ```
+_(NB: you can achieve this behavior without resorting to `set_default_action`. Just set `"last_act_on_reset": True` in your configuration dictionary.)_
 
 _In this code snippet, the action buffer contained in `obs` is the same after `step` and after the second `reset`.
-Otherwise, the last action in the buffer would be `act` after `step` and would be replaced by the default action in `reset`, as the last `act` would in fact never be applied (see `a2` in the previous figure, imagining that `a1` keeps being applied instead of arbitrary actions being applied by `wait` and `reset`, which should then be much shorter / near-instantaneous)._
+Otherwise, the last action in the buffer would be `act` after `step` and would be replaced by the default action in `reset`, as the last `act` would in fact never be applied (see `a2` in the previous figure, imagining that `a1` keeps being applied instead of arbitrary actions being applied by `wait` and `reset`, which in this case should be much shorter / near-instantaneous)._
 
 _It is worth thinking about this if you wish to replace the action buffer with, e.g., recurrent units of a neural network while artificially splitting a non-episodic problem into finite episodes._
 
@@ -107,12 +108,12 @@ The complete script for this tutorial is provided [here](https://github.com/yann
 
 ### Custom Real-Time Gym environment
 #### Introduction
-Implementing a Gym environment on a real system is not straightforward when time cannot be paused between time-steps for observation capture, inference, transfers and actuation.
+Implementing a Gymnasium environment on a real system is not straightforward when time cannot be paused between time-steps for observation capture, inference, transfers and actuation.
 
 Real-Time Gym provides a python interface that enables doing this with minimal effort.
 
-In this tutorial, we will see how to use this interface in order to create a Gym environment for your robot, video game, or other real-time application.
-From the user's point of view, this environment will work as Gym environments usually do, and therefore will be compatible with many readily implemented Reinforcement Learning (RL) algorithms.
+In this tutorial, we will see how to use this interface in order to create a Gymnasium environment for your robot, video game, or other real-time application.
+From the user's point of view, this environment will work as Gymnasium environments usually do, and therefore will be compatible with many readily implemented Reinforcement Learning (RL) algorithms.
 
 #### Install Real-Time Gym
 First, we need to install the Real-Time Gym package.
@@ -132,7 +133,7 @@ You can import the RealTimeGymInterface class as follows:
 from rtgym import RealTimeGymInterface
 ```
 
-The [RealTimeGymInterface](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L12) is all you need to implement in order to create your custom real-time Gym environment.
+The [RealTimeGymInterface](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L12) is all you need to implement in order to create your custom Real-Time Gym environment.
 
 This class has 6 abstract methods that you need to implement: ```get_observation_space```, ```get_action_space```, ```get_default_action```, ```reset```, ```get_obs_rew_terminated_info``` and ```send_control```.
 It also has a ```wait``` and a ```render``` methods that you may want to override.
@@ -285,7 +286,7 @@ def get_action_space(self):
 ---
 ```RealTimeGymInterface``` also requires a default action.
 This is to initialize the action buffer, and optionally to reinitialize it when the environment is reset.
-In addition, ```send_control``` is called with the default action as parameter when the Gym environment is reset.
+In addition, ```send_control``` is called with the default action as parameter when the Gymnasium environment is reset.
 This default action is returned as a numpy array by the ```get_default_action``` method.
 Of course, the default action must be within the action space that we defined in ```get_action_space```.
 
@@ -315,14 +316,14 @@ As you know if you are familiar with Reinforcement Learning, the underlying math
 This means that RL algorithms consider the world as a fixed state, from which an action is taken that leads to a new fixed state, and so on.
 
 However, real applications are of course often far from this assumption, which is why we developed the ```rtgym``` framework.
-Usually, RL theorists use fake Gym environments that are paused between each call to the step() function.
+Usually, RL theorists use fake Gymnasium environments that are paused between each call to the step() function.
 By contrast, ```rtgym``` environments are never really paused, because you simply cannot pause the real world.
 
 Instead, when calling step() in a ```rtgym``` environment, an internal procedure will ensure that the control passed as argument is sent at the beginning of the next real time-step.
 The step() function will block until this point, when a new observation is retrieved.
 Then, step() will return the observation so that inference can be performed in parallel to the next time-step, and so on.
 
-This is convenient because the user doesn't have to worry about these kinds of complicated dynamics and simply alternates between inference and calls to step() as they would usually do with any Gym environment.
+This is convenient because the user doesn't have to worry about these kinds of complicated dynamics and simply alternates between inference and calls to step() as they would usually do with any Gymnasium environment.
 However, this needs to be done repeatedly, otherwise step() will time-out.
 
 Yet, you may still want to artificially 'pause' the environment occasionally, e.g. because you collected a batch of samples, or because you want to pause the whole experiment.
@@ -442,13 +443,13 @@ def reset(self, seed=None, options=None):
           np.array([self.target[1]], dtype='float32')], {}
 ```
 
-We have now fully implemented our custom ```RealTimeGymInterface``` and can use it to instantiate a Gym environment for our real-time application.
+We have now fully implemented our custom ```RealTimeGymInterface``` and can use it to instantiate a Gymnasium environment for our real-time application.
 To do this, we simply pass our custom interface as a parameter to ```gymnasium.make``` in a configuration dictionary, as illustrated in the next section.
 
 ---
 #### Create a configuration dictionary
 
-Now that our custom interface is implemented, we can easily instantiate a fully fledged Gym environment for our dummy RC drone.
+Now that our custom interface is implemented, we can easily instantiate a fully fledged Gymnasium environment for our dummy RC drone.
 This is done by loading the ```rtgym``` ```DEFAULT_CONFIG_DICT``` and replacing the value stored under the ```"interface"``` key by our custom interface:
 
 ```python
@@ -501,13 +502,13 @@ Therefore we set this to ```False```.
 #### Instantiate the custom real-time environment
 
 We are all done!
-Instantiating our Gym environment is now as simple as:
+Instantiating our Gymnasium environment is now as simple as:
 
 ```python
 env = gymnasium.make("real-time-gym-v1", config=my_config)
 ``` 
 
-We can use it as any usual Gym environment:
+We can use it as any usual Gymnasium environment:
 
 ```python
 def model(obs):
@@ -651,7 +652,19 @@ This is to maintain the real-time flow of time-steps during reset transitions.
 
 It may happen that you prefer to repeat the previous action instead, for instance because it is hard in your application to implement a no-op action.
 
-To achieve this behavior, you can simply replace the `default_action` attribute of your environment with the action that you want being sent, right before calling `reset()`.
+To achieve this behavior, you can simply replace the default action of your environment via `set_default_action` with the action that you want being sent, right before calling `reset()`:
+```python
+env.set_default_action(my_new_default_action)
+obs, info = env.reset()
+
+# Note: alternatively, you can set the "last_act_on_reset" entry to True in your configuration.
+# This would make reset() send the last action instead of the default action.
+# In rtgym, when terminated or truncated is True, the action passed to step() is not sent.
+# Setting "last_act_on_reset" to True sends it on the subsequent reset().
+# Think thoroughly before setting this to True, as this might not ne suitable.
+# In Real-Time RL, the last action of an episode has no effect in terms of reward.
+# Thus, it may be entirely random depending on your training algorithm.
+```
 
 ---
 
