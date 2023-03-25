@@ -459,7 +459,7 @@ class RealTimeEnv(Env):
         self.__o_set_flag = True
         self.__o_lock.release()
 
-    def _retrieve_obs_rew_terminated_truncated_info(self):
+    def _retrieve_obs_rew_terminated_info(self):
         """Waits for new available o r d i and retrieves them.
         """
         c = True
@@ -549,7 +549,7 @@ class RealTimeEnv(Env):
             self._run_time_step(action)
         if not self.running:
             raise RuntimeError("The episode is terminated or truncated. Call reset before step.")
-        obs, rew, terminated, info = self._retrieve_obs_rew_terminated_truncated_info()
+        obs, rew, terminated, info = self._retrieve_obs_rew_terminated_info()
         truncated = (self.current_step >= self.ep_max_length) if not terminated else False
         done = (terminated or truncated)
         if not done:  # apply action only when not done
