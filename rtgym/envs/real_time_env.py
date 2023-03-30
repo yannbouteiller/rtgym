@@ -238,7 +238,7 @@ class Benchmark:
         """before join().
         """
         self.__b_lock.acquire()
-        now = time.time()
+        now = time.perf_counter()
         if self.__end_step_time is not None:
             self.inference_duration, self.inference_duration_dev = self.running_average(new_val=now - self.__end_step_time, old_avg=self.inference_duration, old_avg_dev=self.inference_duration_dev)
         self.__start_step_time = now
@@ -248,7 +248,7 @@ class Benchmark:
         """before return.
         """
         self.__b_lock.acquire()
-        now = time.time()
+        now = time.perf_counter()
         if self.__start_step_time is not None:
             self.step_duration, self.step_duration_dev = self.running_average(new_val=now - self.__start_step_time, old_avg=self.step_duration, old_avg_dev=self.step_duration_dev)
         self.__end_step_time = now
@@ -258,7 +258,7 @@ class Benchmark:
         """before run_time_step.
         """
         self.__b_lock.acquire()
-        now = time.time()
+        now = time.perf_counter()
         if self.__start_time_step_time is not None:
             self.time_step_duration, self.time_step_duration_dev = self.running_average(new_val=now - self.__start_time_step_time, old_avg=self.time_step_duration, old_avg_dev=self.time_step_duration_dev)
         if self.__start_step_time is not None:
@@ -268,13 +268,13 @@ class Benchmark:
 
     def start_retrieve_obs_time(self):
         self.__b_lock.acquire()
-        now = time.time()
+        now = time.perf_counter()
         self.__start_retrieve_obs_time = now
         self.__b_lock.release()
 
     def end_retrieve_obs_time(self):
         self.__b_lock.acquire()
-        now = time.time()
+        now = time.perf_counter()
         if self.__start_retrieve_obs_time is not None:
             self.retrieve_obs_duration, self.retrieve_obs_duration_dev = self.running_average(new_val=now - self.__start_retrieve_obs_time, old_avg=self.retrieve_obs_duration, old_avg_dev=self.retrieve_obs_duration_dev)
         self.__end_retrieve_obs_time = now
@@ -282,7 +282,7 @@ class Benchmark:
 
     def end_send_control_time(self):
         self.__b_lock.acquire()
-        now = time.time()
+        now = time.perf_counter()
         if self.__start_time_step_time is not None:
             self.send_control_duration, self.send_control_duration_dev = self.running_average(new_val=now - self.__start_time_step_time, old_avg=self.send_control_duration, old_avg_dev=self.send_control_duration_dev)
         self.__end_send_control_time = now
@@ -368,7 +368,7 @@ class RealTimeEnv(Env):
         It is recommended to draw a time diagram of your system
             action computation and observation capture can be performed in parallel
         """
-        now = time.time()
+        now = time.perf_counter()
         if now < self.__t_end + self.time_step_timeout:  # if either still in the previous time-step of within its allowed elasticity
             self.__t_start = self.__t_end  # the new time-step starts when the previous time-step is supposed to finish or to have finished
         else:  # if after the allowed elasticity
@@ -403,7 +403,7 @@ class RealTimeEnv(Env):
 
     def _initialize_time(self):
         """This is called at first reset()."""
-        now = time.time()
+        now = time.perf_counter()
         # fake a "previous" time step:
         self.__t_start = now - self.time_step_duration
         self.__t_co = self.__t_start + self.start_obs_capture
@@ -431,7 +431,7 @@ class RealTimeEnv(Env):
         if self.benchmark:
             self.bench.end_send_control_time()
         self._update_timestamps()
-        now = time.time()
+        now = time.perf_counter()
         if now < self.__t_co:  # wait until it is time to capture observation
             time.sleep(self.__t_co - now)
         if self.benchmark:
@@ -439,7 +439,7 @@ class RealTimeEnv(Env):
         self.__update_obs_rew_terminated_truncated()  # capture observation
         if self.benchmark:
             self.bench.end_retrieve_obs_time()
-        now = time.time()
+        now = time.perf_counter()
         if now < self.__t_end:  # wait until the end of the time-step
             time.sleep(self.__t_end - now)
 
