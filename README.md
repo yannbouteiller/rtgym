@@ -106,23 +106,21 @@ _It is worth thinking about this if you wish to replace the action buffer with, 
 The time granularity achievable with `rtgym` depends on your Operating System.
 
 Typically, on a high-end machine, Windows should be fine for time steps larger than 20 milliseconds, Linux can deal with time steps one order of magnitude shorter, and you can probably achieve even finer-grained control using a real-time OS.
-We provide benchmark for Windows and Linux in the following Figures.
+We provide benchmarks for Windows and Linux in the following Figures.
 
 ### Windows
 
 On Windows, precision is limited by the time granularity of the `sleep` call.
-
 For instance, on Windows 11, a `20ms (50Hz)` target in `rtgym` will in fact result in the following distribution of individual time step durations:
 
 ![Windows](https://github.com/yannbouteiller/rtgym/releases/download/v0.11/win_join.png "Windows")
 
-The duration of a `20ms` time step in Windows is `20ms` on average, but the actual duration of individual time steps will constantly oscillate between `15ms` and `31ms`.
-This is because the time granularity of the `sleep` call in Windows is `16ms`.
+The duration of a `20ms` time step in Windows is `20ms` on average, but the actual duration of individual time steps constantly oscillates between `15ms` and `31ms`.
+This is because the time granularity of the `sleep` call in Windows is `16ms` (regardless of the target duration).
 
 ### Linux
 
 On Linux, `rtgym` can operate at a much higher frequency.
-
 For instance, using the same machine as the previous Windows experiment, `rtgym` easily achieves a time step duration of `2ms (500Hz)` on Linux:
 
 ![Linux](https://github.com/yannbouteiller/rtgym/releases/download/v0.11/lin_join.png "Linux")
