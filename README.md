@@ -7,6 +7,7 @@ Its purpose is to clock your Gymnasium environments in a way that is transparent
 ## Quick links
 - [Installation](#installation)
 - [Real-time Gym presentation](#real-time-gym-framework)
+- [Performance](#performance)
 - [Tutorial: Implement custom tasks](#tutorial)
   - [Create a RealTimeGymInterface](#create-a-realtimegyminterface)
   - [Create a configuration dictionary](#create-a-configuration-dictionary)
