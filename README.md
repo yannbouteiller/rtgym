@@ -101,6 +101,33 @@ Otherwise, the last action in the buffer would be `act` after `step` and would b
 
 _It is worth thinking about this if you wish to replace the action buffer with, e.g., recurrent units of a neural network while artificially splitting a non-episodic problem into finite episodes._
 
+## Performance
+The time granularity achievable with `rtgym` depends on your Operating System.
+
+Typically, on a high-end machine, Windows should be fine for time steps larger than 20 milliseconds, Linux can deal with time steps one order of magnitude shorter, and you can probably achieve even finer-grained control using a real-time OS.
+We provide benchmark for Windows and Linux in the following Figures.
+
+### Windows
+
+On Windows, precision is limited by the time granularity of the `sleep` call.
+
+For instance, on Windows 11, a `20ms (50Hz)` target in `rtgym` will in fact result in the following distribution of individual time step durations:
+
+![Windows](https://github.com/yannbouteiller/rtgym/releases/download/v0.11/win_join.png "Windows")
+
+The duration of a `20ms` time step in Windows is `20ms` on average, but the actual duration of individual time steps will constantly oscillate between `15ms` and `31ms`.
+This is because the time granularity of the `sleep` call in Windows is `16ms`.
+
+### Linux
+
+On Linux, `rtgym` can operate at a much higher frequency.
+
+For instance, using the same machine as the previous Windows experiment, `rtgym` easily achieves a time step duration of `2ms (500Hz)` on Linux:
+
+![Linux](https://github.com/yannbouteiller/rtgym/releases/download/v0.11/lin_join.png "Linux")
+
+_(Note: `capture` refers to the duration elapsed between two subsequent calls to the `get_obs_rew_terminated_info` method or your `RealTimeGymInterface` implementation, and `control` refers to the duration elapsed between two subsequent calls to its `send_control` method.)_
+
 ## Tutorial
 This tutorial will teach you how to implement a Real-Time Gym environment for your custom application, using ```rtgym```.
 
