@@ -64,7 +64,7 @@ class BenchmarkInterface(RealTimeGymInterface):
         return control_res, obs_res
 
 
-target = 0.002
+target = 0.02
 my_config = DEFAULT_CONFIG_DICT.copy()
 my_config['interface'] = BenchmarkInterface
 my_config['time_step_duration'] = target
