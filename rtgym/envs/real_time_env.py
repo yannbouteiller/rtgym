@@ -363,7 +363,7 @@ class RealTimeEnv(Env):
 
         If the previous time-step has timed out, the beginning of the time-step is set to now
         Otherwise, the beginning of the time-step is the beginning of the previous time-step + the time-step duration
-        The observation starts being captured start_obs_capture_factor time-step after the beginning of the time-step
+        The observation starts being captured start_obs_capture seconds after the beginning of the time-step
             observation capture can exceed the time-step, it is fine, but be cautious with timeouts
         It is recommended to draw a time diagram of your system
             action computation and observation capture can be performed in parallel
@@ -614,3 +614,48 @@ class RealTimeEnv(Env):
             default_action: numpy.array: new default action (make sure it complies with the action space)
         """
         self.default_action = default_action
+
+    def set_time_step_duration(self, time_step_duration: float, time_step_timeout_factor: float = None):
+        """
+        Changes the time step duration (from next time step and on).
+
+        Note: You probably want to also call set_start_obs_capture when calling this API.
+
+        CAUTION: Using this API fundamentally changes how you count delay.
+        If using it, you most likely want the time step duration to be part of your observations.
+        Furthermore, you want to make sure your action buffer is long enough for your minimum time step duration.
+
+        Args:
+            time_step_duration: float: new time step duration (in seconds)
+            time_step_timeout_factor: float (optional): new maximum elasticity (in time steps)
+        """
+        self._join_thread()
+        if time_step_timeout_factor is not None:
+            self.time_step_timeout_factor = time_step_timeout_factor
+        self.time_step_duration = time_step_duration
+        self.time_step_timeout = self.time_step_duration * self.time_step_timeout_factor
+
+    def set_start_obs_capture(self, start_obs_capture: float):
+        """
+        Changes the observation capture time (from next time step and on).
+
+        (Note: start_obs_capture should be smaller or equal to one time step)
+
+        Args:
+            start_obs_capture: float: new observation capture time (in seconds)
+        """
+        self._join_thread()
+        self.start_obs_capture = start_obs_capture
+
+    def set_ep_max_length(self, ep_max_length: int):
+        """
+        Changes the maximum episode length (from next time step and on).
+
+        Args:
+            ep_max_length: int: new maximum episode length (in time steps)
+        """
+        self._join_thread()
+        self.ep_max_length = ep_max_length
+
+
+
