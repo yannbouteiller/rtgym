@@ -283,6 +283,134 @@ class TestEnv(unittest.TestCase):
         print(f"The action applied when obs was captured was {obs1[1]}")
         self.assertEqual(obs1[1], np.array([-1.]))
 
+        # now let us test changing the configuration on-the-fly
+
+        # reset:
+        print("--- reset ---")
+        obs1, info = env.reset()
+
+        # now let us step the environment
+        a = 1
+        print(f"--- Step {a} ---")
+        act = np.array([float(a)], dtype=np.float64)
+        obs2, _, terminated, truncated, _ = env.step(act)
+        print(f"terminated: {terminated}, truncated:{truncated}")
+
+        for i in range(3):
+
+            obs1 = obs2
+            a += 1
+
+            print(f"--- Step {a} ---")
+            act = np.array([float(a)], dtype=np.float64)
+            obs2, _, terminated, truncated, _ = env.step(act)
+            now = time.time()
+            print(f"terminated: {terminated}, truncated:{truncated}")
+
+            # let us look at the action buffer:
+            for j in range(act_buf_len):
+                print(f"The action buffer is {obs2[3 + j]} at index {j}")
+            self.assertEqual(obs2[-1], a)
+
+            # Now, we look at the time elapsed between the two observations:
+            elapsed = obs2[0] - obs1[0]
+            print(f"The two last obs are spaced by {elapsed} seconds")
+            self.assertGreater(time_step_duration + epsilon, elapsed)
+            self.assertGreater(elapsed, time_step_duration - epsilon)
+
+            # the control applied when obs2 was captured should be the previous a
+            print(f"The action applied when obs was captured was {obs2[1]}")
+            self.assertEqual(obs2[1], np.array([float(a - 1)]))
+
+            # the sending timestamp of the control should be the beginning of the last time-step:
+            elapsed = now - obs2[2]
+            print(f"This action was sent {elapsed} seconds ago")
+            self.assertGreater(time_step_duration + epsilon, elapsed)
+            self.assertGreater(elapsed, time_step_duration - epsilon)
+
+        new_time_step_duration = 0.2
+        new_ep_max_length = 8
+        print(f"changing time step duration to {new_time_step_duration} and episode length to {new_ep_max_length}")
+        # let us change the parameters (this waits for the end of the ongoing time step):
+        env.set_time_step_duration(time_step_duration=new_time_step_duration)
+        env.set_start_obs_capture(start_obs_capture=new_time_step_duration)
+        env.set_ep_max_length(ep_max_length=new_ep_max_length)
+
+        # the next time step will still be of the old duration:
+
+        obs1 = obs2
+        a += 1
+
+        print(f"--- Step {a} ---")
+        act = np.array([float(a)], dtype=np.float64)
+        obs2, _, terminated, truncated, _ = env.step(act)
+        now = time.time()
+        print(f"terminated: {terminated}, truncated:{truncated}")
+
+        # let us look at the action buffer:
+        for j in range(act_buf_len):
+            print(f"The action buffer is {obs2[3 + j]} at index {j}")
+        self.assertEqual(obs2[-1], a)
+
+        # Now, we look at the time elapsed between the two observations:
+        elapsed = obs2[0] - obs1[0]
+        print(f"The two last obs are spaced by {elapsed} seconds")
+        self.assertGreater(time_step_duration + epsilon, elapsed)
+        self.assertGreater(elapsed, time_step_duration - epsilon)
+
+        # the control applied when obs2 was captured should be the previous a
+        print(f"The action applied when obs was captured was {obs2[1]}")
+        self.assertEqual(obs2[1], np.array([float(a - 1)]))
+
+        # the sending timestamp of the control should be the beginning of the last time-step:
+        elapsed = now - obs2[2]
+        print(f"This action was sent {elapsed} seconds ago")
+        self.assertGreater(time_step_duration + epsilon, elapsed)
+        self.assertGreater(elapsed, time_step_duration - epsilon)
+
+        # but the following time steps will be of the new duration, and episode will end on time step 8
+
+        for i in range(5):
+
+            obs1 = obs2
+            a += 1
+
+            print(f"--- Step {a} ---")
+            act = np.array([float(a)], dtype=np.float64)
+            obs2, _, terminated, truncated, _ = env.step(act)
+            now = time.time()
+            print(f"terminated: {terminated}, truncated:{truncated}")
+
+            # let us look at the action buffer:
+            for j in range(act_buf_len):
+                print(f"The action buffer is {obs2[3 + j]} at index {j}")
+            self.assertEqual(obs2[-1], a)
+
+            # Now, we look at the time elapsed between the two observations:
+            elapsed = obs2[0] - obs1[0]
+            print(f"The two last obs are spaced by {elapsed} seconds")
+            if i > 0:  # there is some jitter on first iteration
+                self.assertGreater(new_time_step_duration + epsilon, elapsed)
+                self.assertGreater(elapsed, new_time_step_duration - epsilon)
+
+            # the control applied when obs2 was captured should be the previous a
+            print(f"The action applied when obs was captured was {obs2[1]}")
+            self.assertEqual(obs2[1], np.array([float(a - 1)]))
+
+            # the sending timestamp of the control should be the beginning of the last time-step:
+            elapsed = now - obs2[2]
+            print(f"This action was sent {elapsed} seconds ago")
+            if i > 0:  # there is some jitter on first iteration
+                self.assertGreater(new_time_step_duration + epsilon, elapsed)
+                self.assertGreater(elapsed, new_time_step_duration - epsilon)
+
+            # end of episode:
+            if a == 8:
+                # the terminated signal should override the truncated signal:
+                self.assertFalse(terminated)
+                self.assertTrue(truncated)
+                break
+
 
 if __name__ == '__main__':
     unittest.main()
