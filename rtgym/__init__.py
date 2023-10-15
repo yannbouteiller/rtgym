@@ -9,3 +9,8 @@ register(
     id='real-time-gym-v1',
     entry_point='rtgym.envs:RealTimeEnv',
 )
+
+register(
+    id='real-time-gym-ts-v1',
+    entry_point='rtgym.envs:RealTimeEnvTS',
+)
