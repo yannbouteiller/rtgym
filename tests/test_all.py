@@ -44,8 +44,8 @@ class DummyInterface(RealTimeGymInterface):
 
 
 class TestEnv(unittest.TestCase):
-    def test_timing(self):
 
+    def timing(self, env_str):
         epsilon = 0.02
         act_buf_len = 3
         time_step_duration = 0.1
@@ -63,7 +63,7 @@ class TestEnv(unittest.TestCase):
         config["ep_max_length"] = 10
         config["last_act_on_reset"] = True
 
-        env = gymnasium.make("real-time-gym-v1", config=config)
+        env = gymnasium.make(env_str, config=config)
 
         # first reset, the default action (-1) will be sent:
         obs1, info = env.reset()
@@ -332,9 +332,9 @@ class TestEnv(unittest.TestCase):
         new_ep_max_length = 8
         print(f"changing time step duration to {new_time_step_duration} and episode length to {new_ep_max_length}")
         # let us change the parameters (this waits for the end of the ongoing time step):
-        env.set_time_step_duration(time_step_duration=new_time_step_duration)
-        env.set_start_obs_capture(start_obs_capture=new_time_step_duration)
-        env.set_ep_max_length(ep_max_length=new_ep_max_length)
+        env.unwrapped.set_time_step_duration(time_step_duration=new_time_step_duration)
+        env.unwrapped.set_start_obs_capture(start_obs_capture=new_time_step_duration)
+        env.unwrapped.set_ep_max_length(ep_max_length=new_ep_max_length)
 
         # the next time step will still be of the old duration:
 
@@ -410,6 +410,12 @@ class TestEnv(unittest.TestCase):
                 self.assertFalse(terminated)
                 self.assertTrue(truncated)
                 break
+
+    def test_timing_v1(self):
+        self.timing(env_str="real-time-gym-v1")
+
+    def test_timing_ts_v1(self):
+        self.timing(env_str="real-time-gym-ts-v1")
 
 
 if __name__ == '__main__':

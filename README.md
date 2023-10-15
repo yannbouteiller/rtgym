@@ -4,6 +4,14 @@ Easily implement your custom [Gymnasium](https://gymnasium.farama.org) environme
 Real-Time Gym (```rtgym```) is typically needed when trying to use Reinforcement Learning algorithms in robotics or real-time video games.
 Its purpose is to clock your Gymnasium environments in a way that is transparent to the user.
 
+---
+
+`rtgym` has two implementation:
+- `"real-time-gym-v1"` relies on joining a new thread at each time-step, it is not thread-safe.
+- `"real-time-gym-ts-v1"` relies on signaling via python Events, it is thread-safe.
+
+Both implementations should perform similarly in most cases, but `"real-time-gym-ts-v1"` is not thoroughly tested yet. 
+
 ## Quick links
 - [Installation](#installation)
 - [Real-time Gym presentation](#real-time-gym-framework)
@@ -46,6 +54,7 @@ from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
 my_config = DEFAULT_CONFIG_DICT
 my_config['interface'] = MyCustomInterface
 
+# CAUTION: "real-time-gym-v1" is not thread-safe, use "real-time-gym-ts-v1" for thread-safety
 env = gymnasium.make("real-time-gym-v1", my_config, disable_env_checker=True)
 
 obs, info = env.reset()
@@ -55,7 +64,10 @@ while True:  # when this loop is broken, the current time-step will timeout
 ```
 
 You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
-This method defines the core mechanism of Real-Time Gym environments:
+This method defines the core mechanism of Real-Time Gym environments.
+
+_(Note: this diagram describes the `"real-time-gym-v1"`, non thread-safe implementation.
+The `"real-time-gym-ts-v1"` thread-safe implementation is similar, but uses a persistent background thread that is never joined.)_
 
 ![Real-Time Gym Framework](https://raw.githubusercontent.com/yannbouteiller/rtgym/main/figures/rt_gym_env.png "Real-Time Gym Framework")
 
