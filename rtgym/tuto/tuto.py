@@ -134,6 +134,6 @@ elif truncated:
     print(f"Episode truncated due to time-steps limit.")
 
 print("Environment benchmarks:")
-pprint.pprint(env.benchmarks())
+pprint.pprint(env.unwrapped.benchmarks())
 
 cv2.waitKey(0)

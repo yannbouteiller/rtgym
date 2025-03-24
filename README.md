@@ -640,7 +640,7 @@ In each tuple, the first value is the average, and the second value is the avera
 import pprint  # pretty print for visualizing the dictionary nicely
 
 print("Environment benchmarks:")
-pprint.pprint(env.benchmarks())
+pprint.pprint(env.unwrapped.benchmarks())
 ```
 
 The output looks like this:
