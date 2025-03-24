@@ -61,6 +61,9 @@ obs, info = env.reset()
 while True:  # when this loop is broken, the current time-step will timeout
 	act = model(obs)  # inference takes a random amount of time
 	obs, rew, terminated, truncated, info = env.step(act)  # transparently adapts to this duration
+
+# Note: When you need to call wait(), do the following:
+# env.unwrapped.wait()
 ```
 
 You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
@@ -373,6 +376,11 @@ def wait(self):
     self.send_control(np.array([0.0, 0.0], dtype='float32'))
 ```
 You may want your drone to land when this function is called for example.
+
+Calling `wait` in your program can be performed as follows:
+```python
+env.unwrapped.wait()
+```
 
 Note that you generally do not want to customize ```wait``` when ```"reset_act_buf"``` is ```True``` in the ```rtgym``` configuration dictionary.
 In this tutorial this will be the case, thus we keep the default behavior:

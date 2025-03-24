@@ -78,7 +78,7 @@ act = np.array([0.0], dtype=np.float32)
 for _ in range(1000):
     _, _, _, _, _ = env.step(act)
 
-env.wait()
+env.unwrapped.wait()
 
 c, o = env.interface.compute_results()
 
