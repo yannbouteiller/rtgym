@@ -20,6 +20,7 @@ Both implementations should perform similarly in most cases, but `"real-time-gym
   - [Create a RealTimeGymInterface](#create-a-realtimegyminterface)
   - [Create a configuration dictionary](#create-a-configuration-dictionary)
   - [Instantiate your real-time environment](#instantiate-the-custom-real-time-environment)
+  - [Note: Calling wait or custom methods](#note-calling-wait-or-custom-methods)
   - [Bonus 1: Implement a render method](#bonus-1-implement-a-render-method)
   - [Bonus 2: Benchmark your environment](#bonus-2-benchmark-your-environment)
   - [Bonus 3: Pro tips](#bonus-3-pro-tips)
@@ -54,7 +55,7 @@ from rtgym.envs.real_time_env import DEFAULT_CONFIG_DICT
 my_config = DEFAULT_CONFIG_DICT
 my_config['interface'] = MyCustomInterface
 
-# CAUTION: "real-time-gym-v1" is not thread-safe, use "real-time-gym-ts-v1" for thread-safety
+# Note: "real-time-gym-v1" is not thread-safe, use "real-time-gym-ts-v1" for thread-safety
 env = gymnasium.make("real-time-gym-v1", my_config, disable_env_checker=True)
 
 obs, info = env.reset()
@@ -62,8 +63,11 @@ while True:  # when this loop is broken, the current time-step will timeout
 	act = model(obs)  # inference takes a random amount of time
 	obs, rew, terminated, truncated, info = env.step(act)  # transparently adapts to this duration
 
-# Note: When you need to call wait(), do the following:
+# If you need to call the wait() API, do the following:
 # env.unwrapped.wait()
+
+# If you need to call custom methods defined in the interface (here, a close() method), do:
+# env.unwrapped.interface.close()
 ```
 
 You may want to have a look at the [timestamps updating](https://github.com/yannbouteiller/rtgym/blob/969799b596e91808543f781b513901426b88d138/rtgym/envs/real_time_env.py#L188) method of ```rtgym```, which is reponsible for elastically clocking time-steps.
@@ -566,6 +570,24 @@ while not (terminated or truncated):
     act = model(obs)
     obs, rew, terminated, truncated, info = env.step(act)
     print(f"rew:{rew}")
+```
+
+---
+
+#### Note: Calling wait or custom methods
+Real robot applications often need to call the `wait()` API to pause experiments.
+
+Furthermore, you may need to define custom methods in your `RealTimeGymInterface` that you want to call from from the `env` object directly.
+For instance, imagine that your `RealTimeGymInterface` defines a `close()` method in charge of cleaning some background process.
+
+You can do the following:
+
+```python
+env.unwrapped.wait()  # wait() rtgym API (pauses the experiment)
+env.unwrapped.interface.close()  # direct access to your custom method (here: close())
+
+print("Bye!")
+exit()
 ```
 
 ---
