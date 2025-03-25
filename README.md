@@ -575,12 +575,10 @@ while not (terminated or truncated):
 ---
 
 #### Note: Calling wait or custom methods
-Real robot applications often need to call the `wait()` API to pause experiments.
+Real robot applications often require calling the `wait()` API to pause experiments.
 
-Furthermore, you may need to define custom methods in your `RealTimeGymInterface` that you want to call from from the `env` object directly.
-For instance, imagine that your `RealTimeGymInterface` defines a `close()` method in charge of cleaning some background process.
-
-You can do the following:
+Furthermore, you may need to define custom methods in your `RealTimeGymInterface` and call them from the `env` object directly.
+For instance, imagine that your `RealTimeGymInterface` defines a `close()` method in charge of cleaning some background process of file handler:
 
 ```python
 env.unwrapped.wait()  # wait() rtgym API (pauses the experiment)
