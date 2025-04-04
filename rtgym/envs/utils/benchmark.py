@@ -14,11 +14,11 @@ class Benchmark:
 
         # times:
         self.__start_step_time = None
-        self.__end_join_time = None
+        self.__end_step_join_time = None
         self.__end_step_time = None
-        self.__start_retrieve_obs_time = None
-        self.__end_retrieve_obs_time = None
-        self.__start_time_step_time = None
+        self.__start_get_obs_time = None
+        self.__end_get_obs_time = None
+        self.__start_send_control_time = None
         self.__end_send_control_time = None
 
         # averages:
@@ -27,7 +27,7 @@ class Benchmark:
         self.join_duration = None
         self.inference_duration = None
         self.send_control_duration = None
-        self.retrieve_obs_duration = None
+        self.get_obs_duration = None
 
         # average deviations:
         self.time_step_duration_dev = 0.0
@@ -35,7 +35,7 @@ class Benchmark:
         self.join_duration_dev = 0.0
         self.inference_duration_dev = 0.0
         self.send_control_duration_dev = 0.0
-        self.retrieve_obs_duration_dev = 0.0
+        self.get_obs_duration_dev = 0.0
 
     def get_benchmark_dict(self):
         """Each key contains a tuple (avg, avg_dev)
@@ -47,7 +47,7 @@ class Benchmark:
             "join_duration": (self.join_duration, self.join_duration_dev),
             "inference_duration": (self.inference_duration, self.inference_duration_dev),
             "send_control_duration": (self.send_control_duration, self.send_control_duration_dev),
-            "retrieve_obs_duration": (self.retrieve_obs_duration, self.retrieve_obs_duration_dev),
+            "get_obs_duration": (self.get_obs_duration, self.get_obs_duration_dev),
         }
         self._b_lock.release()
         return res
@@ -71,6 +71,15 @@ class Benchmark:
             return new_avg, new_avg_dev
         else:
             return new_val, 0.0
+    
+    def start_reset_time(self):
+        pass
+    
+    def end_reset_join_time(self):
+        pass
+    
+    def end_reset_time(self):
+        pass
 
     def start_step_time(self):
         """before join().
@@ -82,14 +91,14 @@ class Benchmark:
         self.__start_step_time = now
         self._b_lock.release()
 
-    def end_join_time(self):
+    def end_step_join_time(self):
         """after join().
         """
         self._b_lock.acquire()
         now = time.perf_counter()
         if self.__start_step_time is not None:
             self.join_duration, self.join_duration_dev = self.running_average(new_val=now - self.__start_step_time, old_avg=self.join_duration, old_avg_dev=self.join_duration_dev)
-        self.__end_join_time = now
+        self.__end_step_join_time = now
         self._b_lock.release()
 
     def end_step_time(self):
@@ -102,35 +111,35 @@ class Benchmark:
         self.__end_step_time = now
         self._b_lock.release()
 
-    def start_time_step_time(self):
+    def start_send_control_time(self):
         """before run_time_step.
         """
         self._b_lock.acquire()
         now = time.perf_counter()
-        if self.__start_time_step_time is not None:
-            self.time_step_duration, self.time_step_duration_dev = self.running_average(new_val=now - self.__start_time_step_time, old_avg=self.time_step_duration, old_avg_dev=self.time_step_duration_dev)
-        self.__start_time_step_time = now
+        if self.__start_send_control_time is not None:
+            self.time_step_duration, self.time_step_duration_dev = self.running_average(new_val=now - self.__start_send_control_time, old_avg=self.time_step_duration, old_avg_dev=self.time_step_duration_dev)
+        self.__start_send_control_time = now
         self._b_lock.release()
 
-    def start_retrieve_obs_time(self):
+    def start_get_obs_time(self):
         self._b_lock.acquire()
         now = time.perf_counter()
-        self.__start_retrieve_obs_time = now
+        self.__start_get_obs_time = now
         self._b_lock.release()
 
-    def end_retrieve_obs_time(self):
+    def end_get_obs_time(self):
         self._b_lock.acquire()
         now = time.perf_counter()
-        if self.__start_retrieve_obs_time is not None:
-            self.retrieve_obs_duration, self.retrieve_obs_duration_dev = self.running_average(new_val=now - self.__start_retrieve_obs_time, old_avg=self.retrieve_obs_duration, old_avg_dev=self.retrieve_obs_duration_dev)
-        self.__end_retrieve_obs_time = now
+        if self.__start_get_obs_time is not None:
+            self.get_obs_duration, self.get_obs_duration_dev = self.running_average(new_val=now - self.__start_get_obs_time, old_avg=self.get_obs_duration, old_avg_dev=self.get_obs_duration_dev)
+        self.__end_get_obs_time = now
         self._b_lock.release()
 
     def end_send_control_time(self):
         self._b_lock.acquire()
         now = time.perf_counter()
-        if self.__start_time_step_time is not None:
-            self.send_control_duration, self.send_control_duration_dev = self.running_average(new_val=now - self.__start_time_step_time, old_avg=self.send_control_duration, old_avg_dev=self.send_control_duration_dev)
+        if self.__start_send_control_time is not None:
+            self.send_control_duration, self.send_control_duration_dev = self.running_average(new_val=now - self.__start_send_control_time, old_avg=self.send_control_duration, old_avg_dev=self.send_control_duration_dev)
         self.__end_send_control_time = now
         self._b_lock.release()
 
@@ -141,41 +150,70 @@ class TraceBenchmark(Benchmark):
 
         # histories:
         self.__start_step_time = []
-        self.__end_join_time = []
+        self.__end_step_join_time = []
         self.__end_step_time = []
-        self.__start_retrieve_obs_time = []
-        self.__end_retrieve_obs_time = []
-        self.__start_time_step_time = []
+        self.__start_get_obs_time = []
+        self.__end_get_obs_time = []
+        self.__start_send_control_time = []
         self.__end_send_control_time = []
 
     def get_benchmark_dict(self):
         """Returns A dict containing all time traces.
         """
-        from copy import deepcopy
         import numpy as np
 
         self._b_lock.acquire()
+
         res = {
-            "times": {
-                "start_step": deepcopy(self.__start_step_time),
-                "end_join": deepcopy(self.__end_join_time),
-                "end_step": deepcopy(self.__end_step_time),
-                "start_retrieve_obs": deepcopy(self.__start_retrieve_obs_time),
-                "end_retrieve_obs": deepcopy(self.__end_retrieve_obs_time),
-                "start_time_step": deepcopy(self.__start_time_step_time),
-                "end_send_control": deepcopy(self.__end_send_control_time),
-            },
-            "durations": {
-                "time_step_duration": None,
-                "step_duration": None,
-                "join_duration": None,
-                "inference_duration": None,
-                "send_control_duration": None,
-                "retrieve_obs_duration": None,
+            "clock": {
+                "start_step": np.array(self.__start_step_time),
+                "end_step_join": np.array(self.__end_step_join_time),
+                "end_step": np.array(self.__end_step_time),
+                "start_get_obs": np.array(self.__start_get_obs_time),
+                "end_get_obs": np.array(self.__end_get_obs_time),
+                "start_send_control": np.array(self.__start_send_control_time),
+                "end_send_control": np.array(self.__end_send_control_time),
             }
         }
+
+        # determine the minimum-length trace:
+        min_len = min(len(self.__start_step_time),
+                      len(self.__end_step_join_time),
+                      len(self.__end_step_time),
+                      len(self.__start_get_obs_time),
+                      len(self.__end_get_obs_time),
+                      len(self.__start_send_control_time),
+                      len(self.__end_send_control_time))
+
+        if min_len > 1:
+
+            step_duration = np.array(self.__end_step_time) - np.array(self.__start_step_time[:len(self.__end_step_time)])
+            join_duration = np.array(self.__end_step_join_time) - np.array(self.__start_step_time[:len(self.__end_step_join_time)])
+            get_obs_duration = np.array(self.__end_get_obs_time) - np.array(self.__start_get_obs_time[:len(self.__end_get_obs_time)])
+            send_control_duration = np.array(self.__end_send_control_time) - np.array(self.__start_send_control_time[:len(self.__end_send_control_time)])
+            time_step_duration = np.array(self.__start_step_time[1:]) - np.array(self.__start_step_time[:-1])
+            inference_duration = np.array(self.__start_step_time[1:len(self.__end_step_time)]) - np.array(self.__end_step_time[:-1])
+
+            res["deltas"] = {
+                "step_duration": step_duration,
+                "join_duration": join_duration,
+                "inference_duration": inference_duration,
+                "send_control_duration": send_control_duration,
+                "get_obs_duration": get_obs_duration,
+                "time_step_duration": time_step_duration,
+            }
+
         self._b_lock.release()
         return res
+
+    def start_reset_time(self):
+        self.start_step_time()
+
+    def end_reset_join_time(self):
+        self.end_step_join_time()
+
+    def end_reset_time(self):
+        self.end_step_time()
 
     def start_step_time(self):
         """before join().
@@ -185,12 +223,12 @@ class TraceBenchmark(Benchmark):
         self.__start_step_time.append(now)
         self._b_lock.release()
 
-    def end_join_time(self):
+    def end_step_join_time(self):
         """after join().
         """
         self._b_lock.acquire()
         now = time.perf_counter()
-        self.__end_join_time.append(now)
+        self.__end_step_join_time.append(now)
         self._b_lock.release()
 
     def end_step_time(self):
@@ -201,24 +239,24 @@ class TraceBenchmark(Benchmark):
         self.__end_step_time.append(now)
         self._b_lock.release()
 
-    def start_time_step_time(self):
+    def start_send_control_time(self):
         """before run_time_step.
         """
         self._b_lock.acquire()
         now = time.perf_counter()
-        self.__start_time_step_time.append(now)
+        self.__start_send_control_time.append(now)
         self._b_lock.release()
 
-    def start_retrieve_obs_time(self):
+    def start_get_obs_time(self):
         self._b_lock.acquire()
         now = time.perf_counter()
-        self.__start_retrieve_obs_time.append(now)
+        self.__start_get_obs_time.append(now)
         self._b_lock.release()
 
-    def end_retrieve_obs_time(self):
+    def end_get_obs_time(self):
         self._b_lock.acquire()
         now = time.perf_counter()
-        self.__end_retrieve_obs_time.append(now)
+        self.__end_get_obs_time.append(now)
         self._b_lock.release()
 
     def end_send_control_time(self):

@@ -213,7 +213,7 @@ class RealTimeEnv(Env):
         self.__rew = None
         self.__terminated = None
         self.__info = None
-        self.__o_set_flag = False
+        self.__o_set_flag = Event()
 
         # environment benchmark:
         self.benchmark = config["benchmark"] if "benchmark" in config else False
@@ -305,7 +305,7 @@ class RealTimeEnv(Env):
         Caution: only one such function must run in parallel (always join thread)
         """
         if self.benchmark:
-            self.bench.start_time_step_time()
+            self.bench.start_send_control_time()
         act = self.act_prepro_func(action) if self.act_prepro_func else action
         self.interface.send_control(act)
         if self.benchmark:
@@ -315,10 +315,10 @@ class RealTimeEnv(Env):
         if now < self.__t_co:  # wait until it is time to capture observation
             time.sleep(self.__t_co - now)
         if self.benchmark:
-            self.bench.start_retrieve_obs_time()
+            self.bench.start_get_obs_time()
         self.__update_obs_rew_terminated_truncated()  # capture observation
         if self.benchmark:
-            self.bench.end_retrieve_obs_time()
+            self.bench.end_get_obs_time()
         now = time.perf_counter()
         if now < self.__t_end:  # wait until the end of the time-step
             time.sleep(self.__t_end - now)
@@ -336,20 +336,16 @@ class RealTimeEnv(Env):
             elt = self.obs_prepro_func(elt)
         elt = tuple(elt)
         self.__obs, self.__rew, self.__terminated, self.__info = elt, r, d, i
-        self.__o_set_flag = True
+        self.__o_set_flag.set()
         self.__o_lock.release()
 
     def _retrieve_obs_rew_terminated_info(self):
         """Waits for new available o r d i and retrieves them.
         """
-        c = True
-        while c:
-            self.__o_lock.acquire()
-            if self.__o_set_flag:
-                elt, r, d, i = self.__obs, self.__rew, self.__terminated, self.__info
-                self.__o_set_flag = False
-                c = False
-            self.__o_lock.release()
+        self.__o_set_flag.wait()
+        self.__o_lock.acquire()
+        elt, r, d, i = self.__obs, self.__rew, self.__terminated, self.__info
+        self.__o_lock.release()
         return elt, r, d, i
 
     def init_action_buffer(self):
@@ -380,7 +376,11 @@ class RealTimeEnv(Env):
             obs: first observation of the trajectory, including real-time action buffer
             info: info dictionary
         """
+        if self.benchmark:
+            self.bench.start_reset_time()
         self._join_thread()
+        if self.benchmark:
+            self.bench.end_reset_join_time()
         self.running = True
         self.seed = seed
         self.options = options
@@ -401,6 +401,8 @@ class RealTimeEnv(Env):
         if not self.time_initialized:
             self._initialize_time()
         self._run_time_step(self.act_buf[-1])
+        if self.benchmark:
+            self.bench.end_reset_time()
         return elt, info
 
     def step(self, action):
@@ -423,7 +425,7 @@ class RealTimeEnv(Env):
             self.bench.start_step_time()
         self._join_thread()
         if self.benchmark:
-            self.bench.end_join_time()
+            self.bench.end_step_join_time()
         self.current_step += 1
         self.act_buf.append(action)  # the action is always appended to the buffer
         if self.running:
@@ -590,7 +592,7 @@ class RealTimeEnvTS(Env):
         self.__rew = None
         self.__terminated = None
         self.__info = None
-        self.__o_set_flag = False
+        self.__o_set_flag = Event()
 
         # threading:
         self.__die = False
@@ -705,7 +707,7 @@ class RealTimeEnvTS(Env):
         Caution: only one such function must run in parallel (always join thread)
         """
         if self.benchmark:
-            self.bench.start_time_step_time()
+            self.bench.start_send_control_time()
         act = self.act_prepro_func(action) if self.act_prepro_func else action
         self.__interface.send_control(act)
         if self.benchmark:
@@ -715,10 +717,10 @@ class RealTimeEnvTS(Env):
         if now < self.__t_co:  # wait until it is time to capture observation
             time.sleep(self.__t_co - now)
         if self.benchmark:
-            self.bench.start_retrieve_obs_time()
+            self.bench.start_get_obs_time()
         self.__update_obs_rew_terminated_truncated()  # capture observation
         if self.benchmark:
-            self.bench.end_retrieve_obs_time()
+            self.bench.end_get_obs_time()
         now = time.perf_counter()
         if now < self.__t_end:  # wait until the end of the time-step
             time.sleep(self.__t_end - now)
@@ -736,7 +738,7 @@ class RealTimeEnvTS(Env):
             elt = self.obs_prepro_func(elt)
         elt = tuple(elt)
         self.__obs, self.__rew, self.__terminated, self.__info = elt, r, d, i
-        self.__o_set_flag = True
+        self.__o_set_flag.set()
         self.__o_lock.release()
 
     def __background_thread(self):
@@ -769,14 +771,10 @@ class RealTimeEnvTS(Env):
     def _retrieve_obs_rew_terminated_info(self):
         """Waits for new available o r d i and retrieves them.
         """
-        c = True
-        while c:
-            self.__o_lock.acquire()
-            if self.__o_set_flag:
-                elt, r, d, i = self.__obs, self.__rew, self.__terminated, self.__info
-                self.__o_set_flag = False
-                c = False
-            self.__o_lock.release()
+        self.__o_set_flag.wait()
+        self.__o_lock.acquire()
+        elt, r, d, i = self.__obs, self.__rew, self.__terminated, self.__info
+        self.__o_lock.release()
         return elt, r, d, i
 
     def init_action_buffer(self):
@@ -807,7 +805,11 @@ class RealTimeEnvTS(Env):
             obs: first observation of the trajectory, including real-time action buffer
             info: info dictionary
         """
+        if self.benchmark:
+            self.bench.start_reset_time()
         self._wait_thread()
+        if self.benchmark:
+            self.bench.end_reset_join_time()
         self.running = True
         self.seed = seed
         self.options = options
@@ -836,6 +838,8 @@ class RealTimeEnvTS(Env):
             self._initialize_time()
         self._wait_thread()  # Need to wait here as self.__ts_running is set
         self._run_time_step(self.act_buf[-1])
+        if self.benchmark:
+            self.bench.end_reset_time()
         return elt, info
 
     def step(self, action):
@@ -858,7 +862,7 @@ class RealTimeEnvTS(Env):
             self.bench.start_step_time()
         self._wait_thread()
         if self.benchmark:
-            self.bench.end_join_time()
+            self.bench.end_step_join_time()
         self.current_step += 1
         self.act_buf.append(action)  # the action is always appended to the buffer
         if self.running:

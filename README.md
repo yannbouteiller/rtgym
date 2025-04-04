@@ -641,6 +641,14 @@ In order to use the benchmark option, set the corresponding entry to `True` in t
 my_config['benchmark'] = True
 ```
 
+##### Option 1: Polyak-averages
+
+To directly retrieve Polyak-averaged estimates, add the following entry:
+
+```python
+my_config['benchmark_type'] = "polyak"
+```
+
 The provided benchmarks will contain means and average deviations of critical operations, such as your inference duration and observation retrieval duration.
 
 These metrics are estimated through Polyak averaging.
@@ -669,7 +677,7 @@ The output looks like this:
 Environment benchmarks:
 {'inference_duration': (0.014090990135653982, 0.0012176857248554194),
  'join_duration': (0.03710293826222041, 0.006481136920225911),
- 'retrieve_obs_duration': (8.012583396852672e-05, 0.0001397626015969312),
+ 'get_obs_duration': (8.012583396852672e-05, 0.0001397626015969312),
  'send_control_duration': (0.000634083523134701, 0.0005238185602401273),
  'step_duration': (0.037439853824566036, 0.006698605131647715),
  'time_step_duration': (0.051359845765767326, 0.006117140690528808)}
@@ -684,6 +692,51 @@ The time-step duration is `0.05` seconds as requested in the configuration dicti
 Most of this duration is spent joining the `rtgym` thread, i.e. waiting for the previous time-step to end.
 Therefore, we could increase the control frequency here.
 However, note that doing this would imply using a longer action buffer.
+
+##### Option 2: Time traces
+
+For finer-grained analysis, `rtgym` enables recording complete time traces of these metrics instead of estimating averages:
+
+```python
+my_config['benchmark_type'] = "trace"
+```
+
+The result is then a dictionary that contains two dictionaries: one under `"clock"` that records time, and one under `"deltas"` that records metrics:
+
+```python
+benchmarks = env.unwrapped.benchmarks()
+
+clock = benchmarks["clock"]
+deltas = benchmarks["deltas"]
+```
+
+For instance, to display the full traces of all metrics:
+```python
+import matplotlib.pyplot as plt
+
+# initial timestamp:
+t_start = clock["start_step"][0]
+
+# clocks corresponding to each metric:
+c_step = clock["end_step"] - t_start
+c_join = clock["end_step_join"] - t_start
+c_obs = clock["end_get_obs"] - t_start
+c_control = clock["end_send_control"] - t_start
+c_time_step = clock["start_step"][1:] - t_start
+c_inference = clock["start_step"][1:len(clock["end_step"])] - t_start
+
+# plot metrics with time axis:
+plt.step(c_step, deltas["step_duration"], label='step_duration')
+plt.step(c_join, deltas["join_duration"], label='join_duration', linestyle="dotted")
+plt.step(c_obs, deltas["get_obs_duration"], label='get_obs_duration')
+plt.step(c_control, deltas["send_control_duration"], label='send_control_duration')
+plt.step(c_time_step, deltas["time_step_duration"], label='time_step_duration')
+plt.step(c_inference, deltas["inference_duration"], label='inference_duration', linestyle="dashed")
+plt.xlabel("time (s)")
+plt.ylabel("duration (s)")
+plt.legend()
+plt.show()
+```
 
 ---
 
