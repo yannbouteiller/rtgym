@@ -80,7 +80,7 @@ for _ in range(1000):
 
 env.unwrapped.wait()
 
-c, o = env.interface.compute_results()
+c, o = env.unwrapped.interface.compute_results()
 
 print(np.mean(c))
 print(np.mean(o))

@@ -5,7 +5,7 @@ from threading import Lock
 class Benchmark:
     """Benchmarks of the durations of main operations.
 
-    A running average of the mean and average deviation are provided for each duration.
+    A running average of the mean and average deviation is provided for each duration.
     The results are returned as a dictionary of (average, average_deviation) entries.
     """
     def __init__(self, run_avg_factor=0.1):
@@ -145,6 +145,8 @@ class Benchmark:
 
 
 class TraceBenchmark(Benchmark):
+    """Time trace of the execution.
+    """
     def __init__(self, run_avg_factor=0.1):
         super().__init__(run_avg_factor=run_avg_factor)
 
