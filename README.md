@@ -773,7 +773,7 @@ It may happen that you prefer to repeat the previous action instead, for instanc
 
 To achieve this behavior, you can simply replace the default action of your environment via `set_default_action` with the action that you want being sent, right before calling `reset()`:
 ```python
-env.set_default_action(my_new_default_action)
+env..unwrapped.set_default_action(my_new_default_action)
 obs, info = env.reset()
 
 # Note: alternatively, you can set the "last_act_on_reset" entry to True in your configuration.
