@@ -386,7 +386,7 @@ Calling `wait` in your program can be performed as follows:
 env.unwrapped.wait()
 ```
 
-Note that you generally do not want to customize ```wait``` when ```"reset_act_buf"``` is ```True``` in the ```rtgym``` configuration dictionary.
+Note that you generally do not want to customize ```wait``` when ```"reset_act_buf"``` is ```False``` in the ```rtgym``` configuration dictionary.
 In this tutorial this will be the case, thus we keep the default behavior:
 
 ```python
