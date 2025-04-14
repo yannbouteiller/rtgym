@@ -10,7 +10,7 @@ Its purpose is to clock your Gymnasium environments in a way that is transparent
 - `"real-time-gym-v1"` relies on joining a new thread at each time-step, it is not thread-safe.
 - `"real-time-gym-ts-v1"` relies on signaling via python Events, it is thread-safe.
 
-Both implementations should perform similarly in most cases, but `"real-time-gym-ts-v1"` is not thoroughly tested yet. 
+Both implementations should perform similarly in most cases.
 
 ## Quick links
 - [Installation](#installation)
@@ -111,7 +111,7 @@ while True:
     obs, rew, terminated, truncated, info = env.step(act)
     done = terminated or truncated
     if done:
-        env.set_default_action(act)
+        env.unwrapped.set_default_action(act)
         obs, info = env.reset()  # here, act will be applied
 ```
 _(NB: you can achieve this behavior without resorting to `set_default_action`. Just set `"last_act_on_reset": True` in your configuration dictionary.)_
