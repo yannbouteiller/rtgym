@@ -478,7 +478,7 @@ class RealTimeEnv(Env):
         """
         if join_thread:
             self._join_thread()
-        self.interface.render()
+        return self.interface.render()
 
     def set_default_action(self, default_action):
         """Changes the default action.
@@ -920,7 +920,7 @@ class RealTimeEnvTS(Env):
         """
         if join_thread:
             self._wait_thread()
-        self.__interface.render()
+        return self.__interface.render()
 
     def set_default_action(self, default_action):
         """Changes the default action.
