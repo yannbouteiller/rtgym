@@ -77,8 +77,6 @@ class RealTimeGymInterface:
     def get_obs_rew_terminated_info(self):
         """Returns observation, reward, terminated and info from the device.
 
-        Note:
-
         Returns:
             obs: list (corresponding to the tuple from get_observation_space)
             rew: scalar
@@ -127,6 +125,9 @@ class RealTimeGymInterface:
         """Renders the environment (optional).
 
         Implement this if you want to use the render() method of the gymnasium environment.
+
+        Returns:
+            output: (None by default)
         """
         pass
 
@@ -475,6 +476,9 @@ class RealTimeEnv(Env):
             join_thread: set this to True if your render method performs unsafe operations.
                 The render method of your interface is called outside the Real-Time Gym thread.
                 Caution: when join_thread is True, render() is not compatible with benchmarks().
+
+        Returns:
+            The output of the rtgym interface render() method (None by default)
         """
         if join_thread:
             self._join_thread()
