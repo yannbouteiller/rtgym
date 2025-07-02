@@ -736,7 +736,8 @@ class RealTimeEnvTS(Env):
         elt = o
         if self.obs_prepro_func:
             elt = self.obs_prepro_func(elt)
-        elt = tuple(elt)
+        if not isinstance(elt, dict):
+            elt = tuple(elt)
         self.__obs, self.__rew, self.__terminated, self.__info = elt, r, d, i
         self.__o_set_flag.set()
         self.__o_lock.release()
@@ -830,10 +831,14 @@ class RealTimeEnvTS(Env):
         self.__ev_end_reset.clear()
         elt, info = self.__reset_result
         if self.act_in_obs:
-            elt = elt + list(self.act_buf)
+            if not isinstance(elt, dict):
+                elt = elt + list(self.act_buf)
+            else:
+                elt["actions"] = self.act_buf
         if self.obs_prepro_func:
             elt = self.obs_prepro_func(elt)
-        elt = tuple(elt)
+        if not isinstance(elt, dict):
+            elt = tuple(elt)
         if not self.time_initialized:
             self._initialize_time()
         self._wait_thread()  # Need to wait here as self.__ts_running is set
@@ -877,8 +882,16 @@ class RealTimeEnvTS(Env):
             self.running = False
             if self.wait_on_done:
                 self.wait()
-        if self.act_in_obs:
-            obs = tuple((*obs, *tuple(self.act_buf),))
+            if self.act_in_obs:
+                if not isinstance(obs, dict):
+                    obs = tuple(
+                        (
+                            *obs,
+                            *tuple(self.act_buf),
+                        )
+                    )
+                else:
+                    obs["actions"] = tuple(self.act_buf)
         if self.benchmark:
             self.bench.end_step_time()
         return obs, rew, terminated, truncated, info
